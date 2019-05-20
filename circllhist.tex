@@ -1,0 +1,115 @@
+\documentclass{article}
+
+\usepackage{arxiv}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+%\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{minted}
+\title{circllhist}
+
+\subtitle{The Circonus Log-Linear Histogram}
+
+\author{
+  Heinrich Hartmann \\
+  \texttt{heinrich.hartmann@circonus.com} \\
+  Circonus \\
+  \And
+  Theo Schlossnagle \\
+  \texttt{theo.schlossnagle@circonus.com} \\
+  Circonus
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+  The circllhist histogram is a simple, fast and memory efficient data structure for capturing
+  and processing large number of samples, that is particularly suited for applications in
+  IT infrastructure monitoring.
+
+  The circllhist allows arbitrary merging of pre-aggregated data without additional loss of accuracy,
+  and the approximation of percentiles with low expected error and a-priori bounded maximal error.
+
+  Open-source implementations are available for C/lua/python/Go/Java/JavaScript.
+\end{abstract}
+
+\tableofcontents
+
+\section{Introduction}
+The circllhist is a histogram data structure that allows the representation of an virtually
+unlimited amount of data with bounded memory consumption, and precise a-priori bounds for the
+accuracy of derived statistics.
+
+In this note we will describe the data structure ...
+
+\section{Related Work}
+
+\begin{itemize}
+\item HdrHistogram
+\item t-digest
+\end{itemize}
+
+\section{The Circllhist Datastructure}
+\begin{minted}[frame=lines,framesep=2mm]{c}
+
+struct histogram {
+  uint16_t allocd;
+  uint16_t used;
+  struct hist_bv_pair *bvs;
+};
+
+struct hist_bv_pair {
+  hist_bucket_t bucket;
+  uint64_t count;
+};
+
+typedef struct hist_bucket {
+  int8_t val;
+  int8_t exp;
+} hist_bucket_t;
+\end{minted}
+
+\subsection{Circllhist as HdrHistogram}
+
+\section{Histogram Operations}
+
+\subsection{Merging}
+
+\subsection{Mean Values}
+
+\subsection{Percentiles}
+
+\section{Evaluation: Performance}
+
+\section{Evaluation: Accuracy}
+
+
+\bibliographystyle{unsrt}
+\begin{thebibliography}{1}
+
+\bibitem{t-digest}
+George Kour and Raid Saabne.
+\newblock Real-time segmentation of on-line handwritten arabic script.
+\newblock In {\em Frontiers in Handwriting Recognition (ICFHR), 2014 14th
+  International Conference on}, pages 417--422. IEEE, 2014.
+
+\bibitem{HdrHistogram}
+George Kour and Raid Saabne.
+\newblock Real-time segmentation of on-line handwritten arabic script.
+\newblock In {\em Frontiers in Handwriting Recognition (ICFHR), 2014 14th
+  International Conference on}, pages 417--422. IEEE, 2014.
+
+\bibitem{kour2014real}
+George Kour and Raid Saabne.
+\newblock Real-time segmentation of on-line handwritten arabic script.
+\newblock In {\em Frontiers in Handwriting Recognition (ICFHR), 2014 14th
+  International Conference on}, pages 417--422. IEEE, 2014.
+
+\end{thebibliography}
+\end{document}
