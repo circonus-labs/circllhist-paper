@@ -8,9 +8,38 @@
 \usepackage{url}            % simple URL typesetting
 \usepackage{booktabs}       % professional-quality tables
 \usepackage{amsfonts}       % blackboard math symbols
+\usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
 \usepackage{minted}
+
+% ENVIRONMENTS
+\usepackage{amsthm}
+\theoremstyle{plain}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{example}[definition]{Example}
+\newtheorem{remark}[definition]{Remark}
+\newtheorem{lemma}[definition]{Lemma}
+\newtheorem{corollary}[definition]{Corollary}
+
+% TEXT-MODE MACROS
+\newcommand{\IN}{\mathbb{N}}
+\newcommand{\IR}{\mathbb{R}}
+\newcommand{\IZ}{\mathbb{Z}}
+\newcommand{\union}{\cup}
+\newcommand{\Union}{\bigcup}
+\newcommand{\code}{\texttt} % for use as \code{test()}
+\newcommand{\defn}{\emph} % for use as \defn{...}
+
+% MATH-MODE MACROS
+\newcommand{\qtext}[1]{\quad\text{#1}\quad} % for use as \def{...} inside text
+\newcommand{\lra}{\longrightarrow}
+\newcommand{\floor}[1]{\lfloor#1\rfloor}
+\newcommand{\abs}[1]{|#1|}
+\newcommand{\eps}{\epsilon}
+
+
 \title{circllhist}
 
 \subtitle{The Circonus Log-Linear Histogram}
@@ -25,7 +54,9 @@
   Circonus
 }
 
+
 \begin{document}
+
 \maketitle
 
 \begin{abstract}
@@ -49,6 +80,215 @@ accuracy of derived statistics.
 In this note we will describe the data structure ...
 
 \section{Related Work}
+
+\subsection{HDR Histograms}
+
+\subsection{t-digest}
+
+\subsection{DD-sketches}
+
+\section{Abstract Histograms}
+
+\subsection{Binnings}
+
+\begin{definition}
+  An binning $B$ is a set of disjoint intervals (``bins'') $B[i], i\in I$, indexed by a
+  finite or countably infinite set $I$.
+  The union of all bins in a binning is called the domain, $Dom(B)$.
+  \begin{align*}
+    \Union_{i \in I} B[i] = Dom(B) \subset \IR,\quad B[i] \cap B[j] = \emptyset \qtext{for} i \neq j \in I.
+  \end{align*}
+  The map, that associates to $x \in Dom(B)$ the index $i$ of the unique bin with $x \in B[i]$,
+  is called \defn{binning map}
+  and denoted as follows:
+  \begin{align*}
+    bin: Dom(B) \lra I, x \mapsto bin(x) \qtext{with} x \in B[bin(x)]
+  \end{align*}
+\end{definition}
+
+\begin{example}
+  The linear binning of $\IR$ is given by $I = \IZ$, $B_i = [i, i+1)$, with $bin(x)=\floor{x}$.
+\end{example}
+
+\begin{example}
+  The log-linear binning with basis $b$ of $\IR_{>0}$ is given by $I=\IZ$, $B_i = [b^i, b^{i+1})$, with $bin(x)=\floor{\log_b(x)}$.
+\end{example}
+
+\begin{remark}
+  The binning map $Dom(B) \lra I$ uniquely determines the binning $B$, via
+  \begin{align*}
+    B[i] = bin^{-1}\{ i \} = \{ x \in Dom(B) \,|\, bin(x) = i \}.
+  \end{align*}
+  Given a map $f:\IR \supset D \lra I$, there is a unique binning with binning map $f$, if the fibers $f^{-1}\{i\}, i \in I$ are intervals.
+\end{remark}
+
+\subsection{HDR Binnings}
+\newcommand{\float}{\mathrm{float}}
+\newcommand{\bin}{\mathrm{bin}}
+
+Let $b,p \in \IN$ be integers with $b\geq 2, p \geq 1$.
+The \defn{base-$b$ precision-$p$ HDR-binning} has a bin boundary at each base-$b$ floating point number with $p$ significant digits.
+We will be mainly interested in the decimal precision-2 binning, which has it's bin boundaries at the base-10 floating point numbers with two significant digits.
+
+Recall that floating point numbers are represented by sign, mantissa and exponent.
+For example the number
+\begin{align*}
+  \underbrace{+}_{\text{sign}} \underbrace{6.6}_{\text{mantissa}} \cdot {\underbrace{10}_{\text{base}}\hspace{.5em}}^{-36} \hspace{-2em}\underbrace{\hspace{.5em}}_{\text{exponent}}.
+\end{align*}
+has sign $s=+1$, mantissa $d=66$ and exponent $e=-36$.
+
+\begin{definition}
+  For each tuple $(s,d,e)$ of integers with $s=\pm1$ and $b^{p-1} \leq d < b^p$, we associate a real number:
+  \begin{align*}
+    \float_{b,p}(s,d,e) := s \cdot \frac{d}{b^{p-1}} \cdot b^e = s \cdot d \cdot b^{e-p+1}
+  \end{align*}
+  By convention we set $\float_{b,p}(0,0,0)=0$.
+\end{definition}
+
+\begin{example}
+  We have
+  \begin{align*}
+    \float_{10,2}(+1,66,-36) = 66/10 \cdot 10^{-36}  = 6.6 \cdot 10^{-36}.
+  \end{align*}
+  The number $0$ is represented as $\float_{b,p}(0,0,0) = 0$.
+  The number $1$ is represented as $\float_{b,p}(+1,b^{p-1},0) = 1$.
+\end{example}
+
+We can reconstruct the integers $s,d,e$ from a floating point number $x$ as follows.
+\begin{definition}
+  For $x\in\IR, x\neq 0$, we define the following functions:
+  \begin{align*}
+    s(x) := sign(x), \quad
+    e(x) := \floor{\log_b\abs{x}}, \quad
+    d(x) := \floor{\abs{x} \cdot b^{p-1-e(x)}} \quad
+    \delta(x) := \abs{x} \cdot b^{p-1-e(x)} - d(x).
+  \end{align*}
+  Moreover we set $s(0) = e(0) = d(0) = \delta(0) = 0$.
+\end{definition}
+
+\begin{lemma}
+  (A) For $x \neq 0$ we have
+  \begin{align*}
+    b^{p-1} \leq d(x) < b^p \qtext{and} 0 \leq \delta(x) < 1.
+  \end{align*}
+
+  (B) For $x \in \IR$ we have
+  \begin{align*}
+    x = s(x) \frac{d(x) + \delta(x)}{b^{p-1}} b^{e(x)}.
+  \end{align*}
+
+  (C) If $x \neq 0$ is represented as
+  \begin{align*}
+    x = s \frac{d + \delta}{b^{p-1}} b^{e(x)}.
+  \end{align*}
+  with $s \in {\pm 1}$, $\delta \in [0,1)$ and $d \in \IZ$ with $b^{p-1} \leq d < b^p$, then
+  \begin{align*}
+    s = s(x), \quad d = d(x), \quad e = e(x) \qtext{and} \delta = \delta(x).
+  \end{align*}
+\end{lemma}
+
+\begin{proof}
+  We start with claim (B). For $x=0$ we have $s(0) = 0$ hence the equation holds.
+  For $x \neq 0$, we have
+  \begin{align*}
+    x = sign(x) |x| = sign(x) \abs{x} \cdot b^{p-1-e(x)} \cdot b^{e(x)-p+1} = s(x) \cdot (d(x) + \delta(x)) \cdot b^{e(x)-p+1}
+  \end{align*}
+  as claimed.
+
+  Ad A) Note that $\delta(x)$ is of the form $y - \floor{y}$ and hence in $[0,1)$.
+
+    For $x \neq 0$, we write $|x| = b^{log_b|x|} = b^{e(x) + \eps}$, with $\eps \in [0,1)$.
+  Hence $\abs{x} / b^{e(x)} = b^\eps \in [1,b)$ and
+  \begin{align*}
+     d(x) + \delta(x) = \abs{x} \cdot b^{p-1-e(x)} = \abs{x} / b^{e(x)} \cdot b^{p-1} \in [b^{p-1},b^p)
+  \end{align*}
+  so that
+  $d(x) = \floor{d(x) + \delta(x)} \in [ b^{p-1}, b^p )$
+  as both $b^{p-1}$ and $b^p$ are integers.
+
+  Ad C) We first note, that if $x = \float_{b,p}(s,d,e) \neq 0$, then
+  \begin{align*}
+    s(x) = s(\float_{b,p}(s,d,e)) &= sign(s \cdot d \cdot b^{e-p+1}) = s, \\
+    e(x) = e(\float_{b,p}(s,d,e))    &= \floor{ \log_b \abs{s \cdot d \cdot b^{e-p+1}} } = \floor{\log_b(d/b^{p-1})} + e = e, \\
+    d(x) = d(\float_{b,p}(s,d,e))    &= \floor{\abs{ s \cdot d \cdot b^{e-p+1} } \cdot b^{p-1-e(x)}} = \floor{d} = d, \\
+    \delta(x) = \delta(\float_{b,p}(s,d,e)) &= d - \floor{d} = 0.
+  \end{align*}
+  In the second equation we used, that $1 \leq d/b^{p-1} < b$ by (B) and hence $\floor{\log_b(d / b^{p-1})} = 0$.
+  This shows in particular that if $x = \float_{b,p}(s,d,e)$ then $\delta(x) = 0$.
+
+  Conversely let $x \neq 0$ be any real number with $\delta(x) = 0$, then
+  \begin{align*}
+    \float_{b,p}(s(x),d(x),e(x)) = s(x) \cdot (\abs{x} \cdot b^{p-1-e(x)}) \cdot b^{e(x)-p+1} = sign(x) \abs{x} = x
+  \end{align*}
+  as desired.
+  The case $x=0$ is easily verified.
+\end{proof}
+
+\begin{corollary}
+  A number $x \in \IR$ is of the form
+  \begin{align*}
+    x = \float_{b,p}(s,d,e)
+  \end{align*}
+  for some integers $s,d,e$ if and only if $\delta(x) = 0$.
+  In this case
+  \begin{align*}
+    s = s(x), \quad d = d(x), \quad e = e(x).
+  \end{align*}
+\end{corollary}
+
+\begin{definition} \label{hdrdef}
+  The base-$b$ precision-$p$ HDR-binning has index set $I_{b,p}$ and bins $B[s,d,e]$, where
+  \begin{align*}
+    I_{b,p} = \{\, (s,d,e) \,|\, s,d,e \in \IZ \,\text{with}\, s=d=e=0 \,\text{or}\, s=\pm1, b^{p-1} \leq d < b^p \,\}
+  \end{align*}
+  and bins $B[s,d,e]$ defined by
+  \begin{align}
+    B[0,0,0]  &= \{ 0 \} \\
+    B[-1,d,e] &= -B[+1,d,e] \\
+    B[+1,d,e] &= \mathopen[\,\float_{b,p}(s,d,e), \float_{b,p}(s,d+1,e)\,\mathopen) \qtext{for}  d < b^p-1 \\
+    B[+1,b^p-1,e] &= \mathopen[\,\float_{b,p}(s,d,e), \float_{b,p}(s,b^{p-1},e+1)\,\mathopen).
+  \end{align}
+\end{definition}
+
+\begin{lemma}
+  The HDR bins $B[s,d,e]$ are precisely the fibers of the map
+  \begin{align*}
+    bin_{b,p}: \IR \lra I_{b,p}, \quad x \mapsto bin_{b,p}(x) = (s(x), d(x), e(x) ),
+  \end{align*}
+  i.e. $B[s,d,e] = \bin_{b,p}^{-1}\{ (s,d,e) \}$.
+\end{lemma}
+
+\begin{proof}
+  We have to show, that the fibers $\bin_{b,p}^{-1}\{ (s,d,e) \}$ satisfy the four properties
+  of $B[s,d,e]$ given in Definition \ref{hdrdef}.
+
+  Ad 1) We have $bin(0) = 0$ by definition. Conversely if $bin(x) = (0,0,0)$ then $s(x) = 0$ so $x = 0$.
+
+  Ad 2) This follows from the fact that if $x \neq 0$ then $s(x) = -1$ is equivalent to $s(-x) = +1$.
+
+  Ad 3) For $x>0$ we have
+  \begin{align*}
+    x =  \frac{d(x) + \delta(x)}{b^{p-1}} b^{e(x)} = \float_{b,p}(+1,d(x), e(x)) + \delta(x) \cdot b^{e(x)+p-1}
+  \end{align*}
+  with $\delta(x) \in [0,1)$.
+  Ad 3) If $d < b^p - 1$, then
+\end{proof}
+
+\begin{corollary}
+  The bins $B[s,d,e], (s,d,e) \in I_{b,p}$ are disjoint and collectively cover the real axes $\IR$.
+  In particular, HDR histograms are well defined by (\ref{hdrdef}) and have bin mapping $\bin_{b,p}$.
+\end{corollary}
+
+
+\subsection{Histogram Summaries}
+Given a binning $B_i, i\in I$ of $D \subset \IR$, and  dataset $X=(x_1,\dots, x_N) $ with values in
+$D \subset \IR$, we associate a count function:
+
+\begin{align*} c_D(i) = \# \{ j | y_j \in B_i \} \end{align*}
+
+The datum of a binning $B_i,i\in I$ and a count function $c_i,\in I$, is called a histogram summary of $X$.
+
+\subsection{Imlementation}
 
 \begin{itemize}
 \item HdrHistogram
