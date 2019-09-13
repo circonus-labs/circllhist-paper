@@ -5,10 +5,13 @@ TARGETS = circllhist.pdf
 all: $(TARGETS)
 
 %.pdf: %.tex
-	$(DOCKER) pdflatex --shell-escape $<
+	$(DOCKER) pdflatex -interaction=nonstopmode --shell-escape $<
 
 clean:
 	rm $(TARGETS) || true
+
+docker-clean:
+	docker rmi "blang/latex:ubuntu"
 
 open:
 	open $(TARGETS)

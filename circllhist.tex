@@ -166,7 +166,7 @@ We can reconstruct the integers $s,d,e$ from a floating point number $x$ as foll
   Moreover we set $s(0) = e(0) = d(0) = \delta(0) = 0$.
 \end{definition}
 
-\begin{lemma}
+\begin{lemma} \label{floatlem}
   (A) For $x \neq 0$ we have
   \begin{align*}
     b^{p-1} \leq d(x) < b^p \qtext{and} 0 \leq \delta(x) < 1.
@@ -174,14 +174,14 @@ We can reconstruct the integers $s,d,e$ from a floating point number $x$ as foll
 
   (B) For $x \in \IR$ we have
   \begin{align*}
-    x = s(x) \frac{d(x) + \delta(x)}{b^{p-1}} b^{e(x)}.
+    x = s(x) \frac{d(x) + \delta(x)}{b^{p-1}} b^{e(x)}
   \end{align*}
 
   (C) If $x \neq 0$ is represented as
   \begin{align*}
-    x = s \frac{d + \delta}{b^{p-1}} b^{e(x)}.
+    x = s \frac{d + \delta}{b^{p-1}} b^{e(x)}
   \end{align*}
-  with $s \in {\pm 1}$, $\delta \in [0,1)$ and $d \in \IZ$ with $b^{p-1} \leq d < b^p$, then
+  with $s \in \{\pm 1\}$, $\delta \in [0,1)$ and $d \in \IZ$ with $b^{p-1} \leq d < b^p$, then
   \begin{align*}
     s = s(x), \quad d = d(x), \quad e = e(x) \qtext{and} \delta = \delta(x).
   \end{align*}
@@ -197,7 +197,7 @@ We can reconstruct the integers $s,d,e$ from a floating point number $x$ as foll
 
   Ad A) Note that $\delta(x)$ is of the form $y - \floor{y}$ and hence in $[0,1)$.
 
-    For $x \neq 0$, we write $|x| = b^{log_b|x|} = b^{e(x) + \eps}$, with $\eps \in [0,1)$.
+  For $x \neq 0$, we write $|x| = b^{log_b|x|} = b^{e(x) + \eps}$, with $\eps \in [0,1)$.
   Hence $\abs{x} / b^{e(x)} = b^\eps \in [1,b)$ and
   \begin{align*}
      d(x) + \delta(x) = \abs{x} \cdot b^{p-1-e(x)} = \abs{x} / b^{e(x)} \cdot b^{p-1} \in [b^{p-1},b^p)
@@ -206,22 +206,16 @@ We can reconstruct the integers $s,d,e$ from a floating point number $x$ as foll
   $d(x) = \floor{d(x) + \delta(x)} \in [ b^{p-1}, b^p )$
   as both $b^{p-1}$ and $b^p$ are integers.
 
-  Ad C) We first note, that if $x = \float_{b,p}(s,d,e) \neq 0$, then
+  Ad C) We have
   \begin{align*}
-    s(x) = s(\float_{b,p}(s,d,e)) &= sign(s \cdot d \cdot b^{e-p+1}) = s, \\
-    e(x) = e(\float_{b,p}(s,d,e))    &= \floor{ \log_b \abs{s \cdot d \cdot b^{e-p+1}} } = \floor{\log_b(d/b^{p-1})} + e = e, \\
-    d(x) = d(\float_{b,p}(s,d,e))    &= \floor{\abs{ s \cdot d \cdot b^{e-p+1} } \cdot b^{p-1-e(x)}} = \floor{d} = d, \\
-    \delta(x) = \delta(\float_{b,p}(s,d,e)) &= d - \floor{d} = 0.
+    s(x) &= sign(s \cdot (d + \delta) \cdot b^{e-p+1}) = s, \\
+    e(x) &= \floor{ \log_b \abs{s \cdot (d + \delta) \cdot b^{e-p+1}} } = \floor{\log_b((d+\delta)/b^{p-1})} + e = e, \\
+    d(x) &= \floor{\abs{ s \cdot (d + \delta) \cdot b^{e-p+1} } \cdot b^{p-1-e(x)}} = \floor{d + \delta} = d, \\
+    \delta(x) &= (d + \delta) - \floor{d + \delta} = \delta.
   \end{align*}
-  In the second equation we used, that $1 \leq d/b^{p-1} < b$ by (B) and hence $\floor{\log_b(d / b^{p-1})} = 0$.
-  This shows in particular that if $x = \float_{b,p}(s,d,e)$ then $\delta(x) = 0$.
-
-  Conversely let $x \neq 0$ be any real number with $\delta(x) = 0$, then
-  \begin{align*}
-    \float_{b,p}(s(x),d(x),e(x)) = s(x) \cdot (\abs{x} \cdot b^{p-1-e(x)}) \cdot b^{e(x)-p+1} = sign(x) \abs{x} = x
-  \end{align*}
-  as desired.
-  The case $x=0$ is easily verified.
+  In the second equation we used, that $b^{p-1} \leq d < b^p$ and this inequality between integers
+  not changed by adding a small real number $\delta \in [0,1)$ to $d$.
+  Hence $1 \leq (d+\delta) /  b^{p-1} < b$ and $0 \leq log_b((d+\delta) /  b^{p-1}) < 1$.
 \end{proof}
 
 \begin{corollary}
@@ -235,6 +229,15 @@ We can reconstruct the integers $s,d,e$ from a floating point number $x$ as foll
     s = s(x), \quad d = d(x), \quad e = e(x).
   \end{align*}
 \end{corollary}
+\begin{proof}
+  By the Lemma \ref{floatlem} (B), we have
+  \begin{align*}
+    x = s(x) \frac{d(x) + \delta(x)}{b^{p-1}} b^{e(x)} = \float_{b,p}(s(x), d(x), e(x)) + \delta(x) \cdot b^{e(x) - p + 1}.
+  \end{align*}
+  So $\delta(x) = 0$ implies $x = \float_{b,p}(s(x),d(x),e(x))$.
+
+  On the other hand if $x = \float_{b,p}(s,d,e)$ then $s = s(x), d = d(x), e = e(x), \delta(x) = 0$ by \ref{floatlem} (C).
+\end{proof}
 
 \begin{definition} \label{hdrdef}
   The base-$b$ precision-$p$ HDR-binning has index set $I_{b,p}$ and bins $B[s,d,e]$, where
@@ -249,6 +252,9 @@ We can reconstruct the integers $s,d,e$ from a floating point number $x$ as foll
     B[+1,b^p-1,e] &= \mathopen[\,\float_{b,p}(s,d,e), \float_{b,p}(s,b^{p-1},e+1)\,\mathopen).
   \end{align}
 \end{definition}
+
+It's not clear from the above definition that the bins $B[s,d,e]$ are disjoint.
+To show this we use the following Lemma.
 
 \begin{lemma}
   The HDR bins $B[s,d,e]$ are precisely the fibers of the map
