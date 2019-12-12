@@ -124,12 +124,12 @@ In this note we will describe the data structure ...
   Given a map $f:\IR \supset D \lra I$, there is a unique binning with binning map $f$, if the fibers $f^{-1}\{i\}, i \in I$ are intervals.
 \end{remark}
 
-\subsection{HDR Binnings}
+\subsection{Log-Linear Binnings}
 \newcommand{\float}{\mathrm{float}}
 \newcommand{\bin}{\mathrm{bin}}
 
 Let $b,p \in \IN$ be integers with $b\geq 2, p \geq 1$.
-The \defn{base-$b$ precision-$p$ HDR-binning} has a bin boundary at each base-$b$ floating point number with $p$ significant digits.
+The \defn{base-$b$ precision-$p$ log-linear binning} has a bin boundary at each base-$b$ floating point number with $p$ significant digits.
 We will be mainly interested in the decimal precision-2 binning, which has it's bin boundaries at the base-10 floating point numbers with two significant digits.
 
 Recall that floating point numbers are represented by sign, mantissa and exponent.
@@ -157,7 +157,7 @@ has sign $s=+1$, mantissa $d=66$ and exponent $e=-36$.
 \end{example}
 
 \begin{definition} \label{hdrdef}
-  The base-$b$ precision-$p$ HDR-binning has index set
+  The base-$b$ precision-$p$ log-linear binning has index set
   \begin{align*}
     I_{b,p} = \{\, (s,d,e) \,|\, s,d,e \in \IZ \,\text{with}\, s=d=e=0 \,\text{or}\, s=\pm1, b^{p-1} \leq d < b^p \,\}
   \end{align*}
@@ -288,7 +288,7 @@ The rest of this section is devoted to demonstrating this and determining the bi
 \end{proof}
 
 \begin{corollary}
-  (A) The HDR bins $B[s,d,e]$ are precisely the fibers of the map
+  (A) The log-linear bins $B[s,d,e]$ are precisely the fibers of the map
   \begin{align*}
     bin_{b,p}: \IR \lra I_{b,p}, \quad x \mapsto bin_{b,p}(x) = (s(x), d(x), e(x) ),
   \end{align*}
@@ -296,9 +296,9 @@ The rest of this section is devoted to demonstrating this and determining the bi
 
   (B) The bins $B[s,d,e], (s,d,e) \in I_{b,p}$ are disjoint and collectively cover the real axes $\IR$.
 
-  (C) HDR histograms are well defined by Definition \ref{hdrdef} and have bin mapping $\bin_{b,p}: \IR \lra I_{b,p}$.
+  (C) log-linear histograms are well defined by Definition \ref{hdrdef} and have bin mapping $\bin_{b,p}: \IR \lra I_{b,p}$.
 
-  (D) The bin sizes for the HDR binning is given by $size(B[s,d,e]) = b^{e-p+1}$.
+  (D) The bin sizes for the log-linear binning is given by $size(B[s,d,e]) = b^{e-p+1}$.
 \end{corollary}
 
 \begin{proof}
