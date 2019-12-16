@@ -14,6 +14,9 @@
 \usepackage{microtype}      % microtypography
 \usepackage{minted}
 
+\usepackage{graphicx}
+\usepackage{subcaption}
+
 % ENVIRONMENTS
 \usepackage{amsthm}
 \theoremstyle{plain}
@@ -344,8 +347,6 @@ typedef struct hist_bucket {
 } hist_bucket_t;
 \end{minted}
 
-\subsection{Circllhist as HdrHistogram}
-
 \section{Histogram Operations}
 
 \subsection{Merging}
@@ -354,9 +355,108 @@ typedef struct hist_bucket {
 
 \subsection{Percentiles}
 
-\section{Evaluation: Performance}
+\section{Evaluation}
 
-\section{Evaluation: Accuracy}
+\subsection{Datasets}
+
+\begin{figure}
+    \begin{subfigure}[b]{0.9\textwidth}
+        \includegraphics[width=\textwidth]{evaluation/images/Uniform_Distribution_distribution_percentiles.png}
+        \caption{Uniform Distribution}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.9\textwidth}
+        \includegraphics[width=\textwidth]{evaluation/images/API_Latencies_distribution_percentiles.png}
+        \caption{API Latencies}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.9\textwidth}
+        \includegraphics[width=\textwidth]{evaluation/images/Simulated_Latencies_distribution_percentiles.png}
+        \caption{Simulated API Latencies}
+    \end{subfigure}
+    \caption{Datasets}
+\end{figure}
+
+\subsection{Size}
+
+
+Two Points\\
+
+\input{evaluation/tables/Two_Points_size.tex}
+
+Uniform\\
+
+\input{evaluation/tables/Uniform_Distribution_size.tex}
+
+API Latencies\\
+
+\input{evaluation/tables/API_Latencies_size.tex}
+
+Simulated API Latency Data\\
+
+\input{evaluation/tables/Simulated_Latencies_size.tex}
+
+\subsection{Performance}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}[b]{0.3\textwidth}
+        \includegraphics[width=\textwidth]{evaluation/images/Uniform_Distribution_perf.png}
+        \caption{Uniform Distribution}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[b]{0.3\textwidth}
+        \includegraphics[width=\textwidth]{evaluation/images/API_Latencies_perf.png}
+        \caption{API Latencies}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[b]{0.3\textwidth}
+        \includegraphics[width=\textwidth]{evaluation/images/Simulated_Latencies_perf.png}
+        \caption{Simulated API Latencies}
+    \end{subfigure}
+    \caption{Performance Comparison}
+\end{figure}
+
+
+Two Points\\
+
+\input{evaluation/tables/Two_Points_perf.tex}
+
+Uniform\\
+
+\input{evaluation/tables/Uniform_Distribution_perf.tex}
+
+API Latencies\\
+
+\input{evaluation/tables/API_Latencies_perf.tex}
+
+Simulated API Latency Data\\
+
+\input{evaluation/tables/Simulated_Latencies_perf.tex}
+
+\subsection{Accuracy}
+
+\begin{figure}
+  \includegraphics[width=\textwidth]{evaluation/images/Uniform_Distribution_accuracy.png}
+  \includegraphics[width=\textwidth]{evaluation/images/API_Latencies_accuracy.png}
+  \includegraphics[width=\textwidth]{evaluation/images/Simulated_Latencies_accuracy.png}
+  \caption{Accuracy Comparison}
+\end{figure}
+
+
+Two Points\\
+
+\input{evaluation/tables/Two_Points_accuracy.tex}
+
+Uniform\\
+
+\input{evaluation/tables/Uniform_Distribution_accuracy.tex}
+
+API Latencies\\
+
+\input{evaluation/tables/API_Latencies_accuracy.tex}
+
+Simulated API Latency Data\\
+
+\input{evaluation/tables/Simulated_Latencies_accuracy.tex}
 
 
 \bibliographystyle{unsrt}
