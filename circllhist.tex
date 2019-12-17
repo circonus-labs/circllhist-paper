@@ -128,6 +128,14 @@ In this note we will describe the data structure ...
 \end{remark}
 
 \subsection{Log-Linear Binnings}
+
+\begin{figure}
+  \includegraphics[width=\textwidth]{assets/LLBins.png}
+  \caption{Construction of the Log-Linear Binning}
+
+\end{figure}
+
+
 \newcommand{\float}{\mathrm{float}}
 \newcommand{\bin}{\mathrm{bin}}
 
@@ -357,81 +365,77 @@ typedef struct hist_bucket {
 
 \section{Evaluation}
 
+\clearpage
+\subsection{Calibration}
+
+\begin{figure}
+   \includegraphics[width=\textwidth]{evaluation/images/quantile_comparison.png}
+   \includegraphics[width=\textwidth]{evaluation/images/Two_Points_quantile_comparison.png}
+   \caption{Percentile functions on two-point dataset}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \input{evaluation/tables/Two_Points_quantiles.tex}
+  \caption{Percentile values of the two-point dataset $[10,100]$}
+\end{figure}
+
+\clearpage
 \subsection{Datasets}
 
 \begin{figure}
-    \begin{subfigure}[b]{0.9\textwidth}
-        \includegraphics[width=\textwidth]{evaluation/images/Uniform_Distribution_distribution_percentiles.png}
-        \caption{Uniform Distribution}
-    \end{subfigure}
-    \begin{subfigure}[b]{0.9\textwidth}
-        \includegraphics[width=\textwidth]{evaluation/images/API_Latencies_distribution_percentiles.png}
-        \caption{API Latencies}
-    \end{subfigure}
-    \begin{subfigure}[b]{0.9\textwidth}
-        \includegraphics[width=\textwidth]{evaluation/images/Simulated_Latencies_distribution_percentiles.png}
-        \caption{Simulated API Latencies}
-    \end{subfigure}
-    \caption{Datasets}
+   \includegraphics[width=\textwidth]{evaluation/images/Uniform_Distribution_distribution_percentiles.png}
+   \includegraphics[width=\textwidth]{evaluation/images/API_Latencies_distribution_percentiles.png}
+   \includegraphics[width=\textwidth]{evaluation/images/Simulated_Latencies_distribution_percentiles.png}
+   \caption{Datasets}
 \end{figure}
 
+\clearpage
 \subsection{Size}
 
+\begin{figure*}[t!]
+    \centering
+    \begin{subfigure}[t]{0.3\textwidth}
+      \includegraphics[width=\textwidth]{evaluation/images/Uniform_Distribution_size.png}
+      \caption{Uniform Distribution}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[t]{0.3\textwidth}
+      \includegraphics[width=\textwidth]{evaluation/images/API_Latencies_size.png}
+      \caption{API Latencies}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[t]{0.3\textwidth}
+      \includegraphics[width=\textwidth]{evaluation/images/Simulated_Latencies_size.png}
+      \caption{Simulated API Latencies}
+    \end{subfigure}
+    \caption{Size Comparison}
+\end{figure*}
 
-Two Points\\
+\input{evaluation/tables/size.tex}
 
-\input{evaluation/tables/Two_Points_size.tex}
-
-Uniform\\
-
-\input{evaluation/tables/Uniform_Distribution_size.tex}
-
-API Latencies\\
-
-\input{evaluation/tables/API_Latencies_size.tex}
-
-Simulated API Latency Data\\
-
-\input{evaluation/tables/Simulated_Latencies_size.tex}
-
+\clearpage
 \subsection{Performance}
 
 \begin{figure}
-    \centering
-    \begin{subfigure}[b]{0.3\textwidth}
-        \includegraphics[width=\textwidth]{evaluation/images/Uniform_Distribution_perf.png}
-        \caption{Uniform Distribution}
-    \end{subfigure}
-    ~
-    \begin{subfigure}[b]{0.3\textwidth}
-        \includegraphics[width=\textwidth]{evaluation/images/API_Latencies_perf.png}
-        \caption{API Latencies}
-    \end{subfigure}
-    ~
-    \begin{subfigure}[b]{0.3\textwidth}
-        \includegraphics[width=\textwidth]{evaluation/images/Simulated_Latencies_perf.png}
-        \caption{Simulated API Latencies}
-    \end{subfigure}
-    \caption{Performance Comparison}
+  \includegraphics[width=\textwidth]{evaluation/images/Uniform_Distribution_perf.png}
+  \includegraphics[width=\textwidth]{evaluation/images/API_Latencies_perf.png}
+  \includegraphics[width=\textwidth]{evaluation/images/Simulated_Latencies_perf.png}
+  \caption{Performance Comparison}
 \end{figure}
 
-
-Two Points\\
-
-\input{evaluation/tables/Two_Points_perf.tex}
+Tables in usec
 
 Uniform\\
-
 \input{evaluation/tables/Uniform_Distribution_perf.tex}
 
 API Latencies\\
-
 \input{evaluation/tables/API_Latencies_perf.tex}
 
 Simulated API Latency Data\\
-
 \input{evaluation/tables/Simulated_Latencies_perf.tex}
 
+\clearpage
 \subsection{Accuracy}
 
 \begin{figure}
@@ -442,20 +446,13 @@ Simulated API Latency Data\\
 \end{figure}
 
 
-Two Points\\
-
-\input{evaluation/tables/Two_Points_accuracy.tex}
-
 Uniform\\
-
 \input{evaluation/tables/Uniform_Distribution_accuracy.tex}
 
 API Latencies\\
-
 \input{evaluation/tables/API_Latencies_accuracy.tex}
 
 Simulated API Latency Data\\
-
 \input{evaluation/tables/Simulated_Latencies_accuracy.tex}
 
 
@@ -463,22 +460,24 @@ Simulated API Latency Data\\
 \begin{thebibliography}{1}
 
 \bibitem{t-digest}
-George Kour and Raid Saabne.
-\newblock Real-time segmentation of on-line handwritten arabic script.
-\newblock In {\em Frontiers in Handwriting Recognition (ICFHR), 2014 14th
-  International Conference on}, pages 417--422. IEEE, 2014.
+T. Dunning and O. Ertl.
+\newblock  Computing extremeley accurate quantiles using t-digests.
+\newblock \url{https://github.com/tdunning/t-digest}, 2017.
+
+\bibitem{dd-sketch}
+M. Charles, J.E. Rim, H.K. Lee.
+\newblock DDSketch: A fast and fully-mergeable quantile sketch with relative-error guarantees.
+\newblock Proceedings of the VLDB Endowment 12.12 (2019): 2195-2205.
 
 \bibitem{HdrHistogram}
-George Kour and Raid Saabne.
-\newblock Real-time segmentation of on-line handwritten arabic script.
-\newblock In {\em Frontiers in Handwriting Recognition (ICFHR), 2014 14th
-  International Conference on}, pages 417--422. IEEE, 2014.
+G. Tene,
+\newblock HdrHistogram: A high dynamic range (hdr) histogram
+\newblock \url{http://hdrhistogram.org/}, 2012
 
-\bibitem{kour2014real}
-George Kour and Raid Saabne.
-\newblock Real-time segmentation of on-line handwritten arabic script.
-\newblock In {\em Frontiers in Handwriting Recognition (ICFHR), 2014 14th
-  International Conference on}, pages 417--422. IEEE, 2014.
+\bibitem{libcircllhist}
+  Circonus,
+  \newblock libcircllhist: An implementation of Circonus Log-Linear Histograms
+  \newblock \url{https://github.com/circonus-labs/libcircllhist}, 2016
 
 \end{thebibliography}
 \end{document}

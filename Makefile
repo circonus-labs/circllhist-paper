@@ -2,7 +2,7 @@ DOCKER = exec docker run --rm -i --user="$$(id -u):$$(id -g)" --net=none -v "$$P
 
 TARGETS = circllhist.pdf
 
-all: $(TARGETS)
+all: fix $(TARGETS)
 
 %.pdf: %.tex
 	$(DOCKER) pdflatex -interaction=nonstopmode --shell-escape $<
@@ -12,6 +12,10 @@ clean:
 
 docker-clean:
 	docker rmi "blang/latex:ubuntu"
+
+fix:
+	cd evaluation/images && rename -v -f 's/ /_/' *.png
+	cd evaluation/tables && rename -v -f 's/ /_/' *.tex
 
 open:
 	open $(TARGETS)

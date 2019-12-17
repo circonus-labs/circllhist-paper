@@ -38,6 +38,7 @@ class Merger(object):
     def bsize(self):
         raise NotImplementedError()
 
+        
 class ExactMerger(Merger):
     name = "exact"
     def __init__(self):
@@ -55,6 +56,32 @@ class ExactMerger(Merger):
     def bsize(self):
         return pysize(self.data)
 
+class PromMerger(Merger):
+    name = "prom"
+    def __init__(self):
+        self.X = np.array([ 0, 10, 100, 1000, 10000 ]) # thresholds
+        self.N = len(self.X)
+        self.C = np.array([0] * self.N) # counts
+    def bsize(self):
+        return pysize(self.C)
+    def insert(self, batch):
+        for x in batch:
+            for i in range(N):
+                if x < self.X[i]:
+                    self.C[i] += 1
+    def merge(self, other):
+        self.X = self.X + other.X
+    def quantile(self, q):
+        rank = q * self.C[self.N - 1]
+        b = np.searchsorted(self.C, rank, "right")
+        if b == 0:
+            return self.X[0]
+        bucketStart = self.X[b - 1]
+        bucketEnd   = self.X[b]
+        bucketCount = self.C[b] - self.C[b - 1]
+        bucketRank  = rank - self.C[b - 1]
+        return bucketStart + (bucketEnd - bucketStart) * (bucketRank / bucketCount)
+    
 class CircllhistMerger(Merger):
     name = "circllhist"
     def __init__(self):
@@ -73,7 +100,7 @@ class HdrMerger(Merger):
     name = "HdrHistogram"
     def __init__(self):
         self.H = HdrHistogram(1, 10**256, 3)
-        self.M = 10**3 + 0.0
+        self.M = 10**10 + 0.0
     def insert(self, batch):
         for val in batch:
             self.H.record_value(val * self.M)
