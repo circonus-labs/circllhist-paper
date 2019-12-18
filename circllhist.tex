@@ -4,7 +4,8 @@
 
 \usepackage[utf8]{inputenc} % allow utf-8 input
 \usepackage[T1]{fontenc}    % use 8-bit T1 fonts
-%\usepackage{hyperref}       % hyperlinks
+\usepackage{hyperref}       % hyperlinks
+\hypersetup{hidelinks = true}
 \usepackage{url}            % simple URL typesetting
 \usepackage{booktabs}       % professional-quality tables
 \usepackage{amsfonts}       % blackboard math symbols
@@ -365,6 +366,42 @@ typedef struct hist_bucket {
 
 \section{Evaluation}
 
+In this section compare the following quantile sketches:
+
+\begin{itemize}
+\item[exact]
+  Exact quantile estimation based on numpy arrays \url{numpy.org}
+\item[prom]
+  Quantile estimation based on \href{prometheus.io}{Prometheus} Histograms.
+  We use a hand-written Python port of the original quantile functions written in go.
+\item[hdr]
+  The High Dynamic Range Histogram data-structure was introduced in \cite{hdr}.
+  We use the Python implementation published at \url{https://github.com/HdrHistogram/HdrHistogram_py}.
+\item[t-digest]
+  The t-digest data structure was introduced in \cite{tdigest}.
+  We use Java implementation by the original authors available at \url{github.com/tdunning/t-digest}.
+\item[dd]
+  The ``Distributed Distribution Sketch'' is a histogram datastructure that was introduced in \cite{dd}.
+  We use the Python implementation published at \url{github.com/DataDog/sketches-py}
+\item[circllhist]
+  The Circonus Log-Linear Histogram datastructure described in this document.
+  We use the Python/C implementation published at \url{github.com/circonus-labs/libcircllhist}.
+\end{itemize}
+
+The Prometheus monitoring system makes use of a very simple quantile sketch that consists of a list
+of ``less than'' metrics, which count how many samples were inserted that are below manually
+configured threshold values.
+Prometheus Histograms are in wide use in practice.
+The evaluation results are highly dependent on the number and location of the chosen thresholds.
+We use the recommended number of around 10 threshold values, at locations which cover the whole
+data range with emphasis on the likely quantile locations.
+In practice these thresholds have to be chosen without knowledge of the dataset that is being recorded.
+
+The HDR Histogram method was configured to resemble the circllhist method, with a range of
+$10^{-128} .. 10^{128}$ and a accuracy of three significant digits.
+
+
+
 \clearpage
 \subsection{Calibration}
 
@@ -394,25 +431,15 @@ typedef struct hist_bucket {
 \subsection{Size}
 
 \begin{figure*}[t!]
-    \centering
-    \begin{subfigure}[t]{0.3\textwidth}
-      \includegraphics[width=\textwidth]{evaluation/images/Uniform_Distribution_size.png}
-      \caption{Uniform Distribution}
-    \end{subfigure}
-    ~
-    \begin{subfigure}[t]{0.3\textwidth}
-      \includegraphics[width=\textwidth]{evaluation/images/API_Latencies_size.png}
-      \caption{API Latencies}
-    \end{subfigure}
-    ~
-    \begin{subfigure}[t]{0.3\textwidth}
-      \includegraphics[width=\textwidth]{evaluation/images/Simulated_Latencies_size.png}
-      \caption{Simulated API Latencies}
-    \end{subfigure}
-    \caption{Size Comparison}
+  \includegraphics[width=\textwidth]{evaluation/images/all_size.png}
+  \caption{Size Comparison}
 \end{figure*}
 
-\input{evaluation/tables/size.tex}
+\begin{figure}
+  \centering
+  \input{evaluation/tables/all_size.tex}
+  \caption{Aggregation sizes in kb}
+\end{figure}
 
 \clearpage
 \subsection{Performance}
@@ -445,31 +472,29 @@ Simulated API Latency Data\\
   \caption{Accuracy Comparison}
 \end{figure}
 
-
-Uniform\\
-\input{evaluation/tables/Uniform_Distribution_accuracy.tex}
-
-API Latencies\\
-\input{evaluation/tables/API_Latencies_accuracy.tex}
-
-Simulated API Latency Data\\
-\input{evaluation/tables/Simulated_Latencies_accuracy.tex}
-
+\begin{figure}
+  Uniform\\
+  \input{evaluation/tables/Uniform_Distribution_accuracy.tex}
+  API Latencies\\
+  \input{evaluation/tables/API_Latencies_accuracy.tex}
+  Simulated API Latency Data\\
+  \input{evaluation/tables/Simulated_Latencies_accuracy.tex}
+\end{figure}
 
 \bibliographystyle{unsrt}
 \begin{thebibliography}{1}
 
-\bibitem{t-digest}
+\bibitem{tdigest}
 T. Dunning and O. Ertl.
 \newblock  Computing extremeley accurate quantiles using t-digests.
 \newblock \url{https://github.com/tdunning/t-digest}, 2017.
 
-\bibitem{dd-sketch}
+\bibitem{dd}
 M. Charles, J.E. Rim, H.K. Lee.
 \newblock DDSketch: A fast and fully-mergeable quantile sketch with relative-error guarantees.
 \newblock Proceedings of the VLDB Endowment 12.12 (2019): 2195-2205.
 
-\bibitem{HdrHistogram}
+\bibitem{hdr}
 G. Tene,
 \newblock HdrHistogram: A high dynamic range (hdr) histogram
 \newblock \url{http://hdrhistogram.org/}, 2012
