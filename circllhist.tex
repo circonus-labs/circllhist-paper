@@ -15,6 +15,10 @@
 \usepackage{microtype}      % microtypography
 \usepackage{minted}
 
+\usepackage{fancyvrb}
+\usepackage{mathtools}
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+
 \usepackage{graphicx}
 \usepackage{subcaption}
 
@@ -25,9 +29,9 @@
 \newtheorem{lemma}[definition]{Lemma}
 \newtheorem{proposition}[definition]{Proposition}
 \newtheorem{corollary}[definition]{Corollary}
+\newtheorem{example}[definition]{Example}
 \theoremstyle{remark}
 \newtheorem{remark}[definition]{Remark}
-\newtheorem{example}[definition]{Example}
 
 % TEXT-MODE MACROS
 \newcommand{\IN}{\mathbb{N}}
@@ -40,6 +44,7 @@
 
 % MATH-MODE MACROS
 \newcommand{\qtext}[1]{\quad\text{#1}\quad} % for use as \def{...} inside text
+\newcommand{\ra}{\rightarrow}
 \newcommand{\lra}{\longrightarrow}
 \newcommand{\floor}[1]{\lfloor#1\rfloor}
 \newcommand{\abs}[1]{|#1|}
@@ -60,7 +65,6 @@
   Circonus
 }
 
-
 \begin{document}
 
 \maketitle
@@ -78,329 +82,142 @@
 
 \tableofcontents
 
-\section{Introduction}
-The circllhist is a histogram data structure that allows the representation of an virtually
-unlimited amount of data with bounded memory consumption, and precise a-priori bounds for the
-accuracy of derived statistics.
+\input{part1.tex}
 
-In this note we will describe the data structure ...
-
-\section{Related Work}
-
-\subsection{HDR Histograms}
-
-\subsection{t-digest}
-
-\subsection{DD-sketches}
-
-\section{Abstract Histograms}
-
-\subsection{Binnings}
-
-\begin{definition}
-  An binning $B$ is a set of disjoint intervals (``bins'') $B[i], i\in I$, indexed by a
-  finite or countably infinite set $I$.
-  The union of all bins in a binning is called the domain, $Dom(B)$.
-  \begin{align*}
-    \Union_{i \in I} B[i] = Dom(B) \subset \IR,\quad B[i] \cap B[j] = \emptyset \qtext{for} i \neq j \in I.
-  \end{align*}
-  The map, that associates to $x \in Dom(B)$ the index $i$ of the unique bin with $x \in B[i]$,
-  is called \defn{binning map}
-  and denoted as follows:
-  \begin{align*}
-    bin: Dom(B) \lra I, x \mapsto bin(x) \qtext{with} x \in B[bin(x)]
-  \end{align*}
-\end{definition}
-
-\begin{example}
-  The linear binning of $\IR$ is given by $I = \IZ$, $B_i = [i, i+1)$, with $bin(x)=\floor{x}$.
-\end{example}
-
-\begin{example}
-  The log-linear binning with basis $b$ of $\IR_{>0}$ is given by $I=\IZ$, $B_i = [b^i, b^{i+1})$, with $bin(x)=\floor{\log_b(x)}$.
-\end{example}
-
-\begin{remark}
-  The binning map $Dom(B) \lra I$ uniquely determines the binning $B$, via
-  \begin{align*}
-    B[i] = bin^{-1}\{ i \} = \{ x \in Dom(B) \,|\, bin(x) = i \}.
-  \end{align*}
-  Given a map $f:\IR \supset D \lra I$, there is a unique binning with binning map $f$, if the fibers $f^{-1}\{i\}, i \in I$ are intervals.
-\end{remark}
-
-\subsection{Log-Linear Binnings}
+\clearpage
+\section{Theory}
 
 \begin{figure}
   \includegraphics[width=\textwidth]{assets/LLBins.png}
   \caption{Construction of the Log-Linear Binning}
-
+  \label{fig:llbins}
 \end{figure}
 
+The idea behind the circllhist is illustrated in Figure \ref{fig:llbins}, and quick to explain.
+We start with a logarithmic binning of the real axes, that has bins at the powers of ten.
+\begin{center}
+  \begin{BVerbatim}
+    ... 0.01, 0.1, 1, 10, 100, ...
+  \end{BVerbatim}
+\end{center}
+We divide each logarithmic bin into $n=90$ equally spaced segments. In this way the bin boundaries
+are preciesly the base-10, precision-2 floating point numbers:
+\begin{center}
+\begin{BVerbatim}
+... 1.0,  1.1,  1.2,  ...   9.9,
+     10,   11,   12,  ...    99,
+    100,  110,  120,  ...   990, ...
+\end{BVerbatim}
+\end{center}
+Those are the bin boundaries for the circllhist data structure.
+When samples are inserted into the circllhist, we retain counts of the number of samples in each bin.
+This information allows us to approximate the original location of the inserted samples with a
+maximal relative error less than $5\%$.
 
-\newcommand{\float}{\mathrm{float}}
-\newcommand{\bin}{\mathrm{bin}}
+In this section we develop an abstract theory of histograms to a degree that allows us to
+formally define circllhist as a linear refinement of a logarithmic histogram structure,
+and derive basic properties and error bounds.
 
-Let $b,p \in \IN$ be integers with $b\geq 2, p \geq 1$.
-The \defn{base-$b$ precision-$p$ log-linear binning} has a bin boundary at each base-$b$ floating point number with $p$ significant digits.
-We will be mainly interested in the decimal precision-2 binning, which has it's bin boundaries at the base-10 floating point numbers with two significant digits.
-
-Recall that floating point numbers are represented by sign, mantissa and exponent.
-For example the number
-\begin{align*}
-  \underbrace{+}_{\text{sign}} \underbrace{6.6}_{\text{mantissa}} \cdot {\underbrace{10}_{\text{base}}\hspace{.5em}}^{-36} \hspace{-2em}\underbrace{\hspace{.5em}}_{\text{exponent}}.
-\end{align*}
-has sign $s=+1$, mantissa $d=66$ and exponent $e=-36$.
+\subsection{Binnings}
 
 \begin{definition}
-  For each tuple $(s,d,e)$ of integers with $s=\pm1$ we associate a real number:
+  Let $D \subset \IR$ be a connected subset of the real axes (e.g. $D=\IR, D=[0,1)$).
+  A binning of $D$ is a collection of intervals $Bin[i], i \in I$, that are disjoint and collectively cover the binning domain $D$:
   \begin{align*}
-    \float_{b,p}(s,d,e) := s \cdot \frac{d}{b^{p-1}} \cdot b^e = s \cdot d \cdot b^{e-p+1}
+    D = \Union_{i\in I} Bin[i] \qtext{and} Bin[i] \cap Bin[j] = \emptyset \qtext{for} i \neq j.
   \end{align*}
-  By convention we set $\float_{b,p}(0,0,0)=0$.
+  The map that associates to each $x \in D$ the unique index $i$ so that $x \in Bin[i]$ is called
+  binning map and is denoted as $bin(x) = i$.
 \end{definition}
 
-\begin{example}
-  We have
-  \begin{align*}
-    \float_{10,2}(+1,66,-36) = 66/10 \cdot 10^{-36}  = 6.6 \cdot 10^{-36}.
-  \end{align*}
-  The number $0$ is represented as $\float_{b,p}(0,0,0) = 0$.
-  The number $1$ is represented as $\float_{b,p}(+1,b^{p-1},0) = 1$.
-\end{example}
-
-\begin{definition} \label{hdrdef}
-  The base-$b$ precision-$p$ log-linear binning has index set
-  \begin{align*}
-    I_{b,p} = \{\, (s,d,e) \,|\, s,d,e \in \IZ \,\text{with}\, s=d=e=0 \,\text{or}\, s=\pm1, b^{p-1} \leq d < b^p \,\}
-  \end{align*}
-  and bins $B[s,d,e]$ defined by
-  \begin{align*}
-    B[+1,d,e] &= \mathopen[\,\float_{b,p}(+1,d,e), \float_{b,p}(+1,d+1,e)\,\mathopen), \\
-    B[0,0,0]  &= \{ 0 \}, \\
-    B[-1,d,e] &= \mathopen(\,\float_{b,p}(-1,d+1,e), \float_{b,p}(-1,d+1,e)\,\mathopen].
-  \end{align*}
-\end{definition}
-
-\begin{remark} For the largest allowable $d=b^{p}-1$ we have $(s,d+1,e) \neq I_{b,p}$, but
-  \begin{align*}
-    \float_{b,p}(s,d + 1,e) = \float_{b,p}(s, b^p ,e) = \float_{b,p}(s, b^{p-1}, e+1)
-  \end{align*}
-  with $(s, b^{p-1}, e) \in I_{b,p}$.
-  So the bin boundaries can always be chosen from the index set $I_{b,p}$.
+\begin{remark}
+  The binning map $bin: D \ra I$ determines the binning via $Bin[i] = \{ x \in D \,|\, bin(x) = i \}$.
 \end{remark}
 
-It's not clear from the above definition that the bins are disjoint and cover the real axes.
-The rest of this section is devoted to demonstrating this and determining the binning map.
-
-\begin{definition}
-  For $x\in\IR, x\neq 0$, we define the following functions:
+\begin{example}
+  The linear binning of $\IR$ is given by $I = \IZ$, with
   \begin{align*}
-    s(x) := sign(x), \quad
-    e(x) := \floor{\log_b\abs{x}}, \quad
-    d(x) := \floor{\abs{x} \cdot b^{-e(x)+p-1}} \quad
-    \delta(x) := \abs{x} \cdot b^{-e(x)+p-1} - d(x).
+    Bin[i] = [i, i+1)  \qtext{and} bin(x)=\floor{x}
   \end{align*}
-  Moreover we set $s(0) = e(0) = d(0) = \delta(0) = 0$.
+\end{example}
+
+\begin{example}
+  The length $n$ linear binning of $[0,1)$ is given by $I = \{0, \dots, n-1\}$, with
+    \begin{align*}
+      Bin^{Lin}_n[i]   = [ \frac{i}{n}, \frac{i+1}{n} )
+      \qtext{and}
+      bin^{Lin}_n(x) = \floor{x \cdot n}
+    \end{align*}
+\end{example}
+
+\begin{example}
+  The logarithmic binning with basis $b > 0$ of $\IR_{>0}$ is given by $I=\IZ$, with
+  \begin{align*}
+    Bin^{Log}_b[i] = [b^i, b^{i+1})
+    \qtext{and}
+    bin^{Log}_b(x)=\floor{\log_b(x)}
+  \end{align*}
+\end{example}
+
+\begin{definition}\label{ref}
+  Given a map $\alpha: I \ra J$, and a binning $(I, Bin)$, we can define a new binning
+  $(J, Bin^*)$ by setting:
+  \begin{align*}
+    Bin^*[j] = \Union_{i, \alpha(i) = j} Bin[i], \qtext{and} bin^*(x) = \alpha(bin(x))
+  \end{align*}
+  In this situation we call $(J, Bin^*)$ a coarsening of $(I, Bin)$, and $(I, Bin)$ a refinement of $(J, Bin^*)$.
 \end{definition}
 
-\begin{lemma} \label{floatlem}
-  (A) For $x \neq 0$ we have
+\begin{definition}\label{lref}
+  Given a binning $Bin[i], i\in I$ with half-open bins $Bin[i] = [a_i, b_i)$.
+  The length-n linear refinement of $(I, Bin)$, is given by the index set $I \times \{0,\dots, n-1\}$,
+  bins
   \begin{align*}
-    b^{p-1} \leq d(x) < b^p \qtext{and} 0 \leq \delta(x) < 1.
+    L_nBin[i,j] = [ a_i + \frac{j}{n}(b_i - a_i), a_i + \frac{j+1}{n}(b_i - a_i) )
   \end{align*}
+  and binning map
+  \begin{align*}
+    L_nbin(x) = ( bin(x), \floor{\frac{x - a_{bin(x)}}{b_{bin(x)} - a_{bin(x)}} \cdot n } ).
+  \end{align*}
+\end{definition}
 
-  (B) For $x \in \IR$ we have
+\begin{proof}
+  To verify the binning map we have to show that $x \in L_nBin[ L_nbin(x) ]$ for all $x \in D$.
+  Let $(i,j) = L_nbin(x)$.
+  Since $i = bin(x)$, we know that $x \in [a_i, b_i)$.
+  Now we consider the linear map $\phi(x) = (x-a_i)/(b_i-a_i)$ which maps $Bin[i]$ bijectively to $[0,1)$.
+  We have $j = \floor{ n \phi(x) }$ by definition of $L_nbin(x)$.
+  To show that $x \in L_nBin[ L_nbin(x) ]$ it suffices to verify
+  that $\phi(x) \in \phi(L_nBin[i,j]) = [ \frac{j}{n}, \frac{j+1}{n} )$.
+  And indeed,
   \begin{align*}
-    x = s(x) \cdot (d(x) + \delta(x)) \cdot b^{e(x) - p + 1}
+    \frac{j}{n} = \frac{\floor{ n \phi(x) }}{n} \leq \phi(x)
+    \leq \frac{\ceil{n \phi(x)}}{n} < \frac{\floor{ n \phi(x) } + 1 }{n} =  \frac{j+1}{n}
   \end{align*}
+\end{proof}
 
-  (C) If $x \neq 0$ is represented as
-  \begin{align*}
-    x = s \cdot (d + \delta) \cdot b^{e - p + 1}
-  \end{align*}
-  with $s \in \{\pm 1\}$, $\delta \in [0,1)$ and $d \in \IZ$ with $b^{p-1} \leq d < b^p$, then
-  \begin{align*}
-    s = s(x), \quad d = d(x), \quad e = e(x) \qtext{and} \delta = \delta(x).
-  \end{align*}
+\begin{lemma}
+  The length-n linear refinement of a binning $(I, Bin)$ is a refinement in the sense of Definition \ref{ref}.
+  The index map is given by $\alpha(i,j) = i$ for $i \in I$, $j \in \{0,\dots,n-1\}$.
 \end{lemma}
 
 \begin{proof}
-  We start with claim (B). For $x=0$ we have $s(0) = 0$ hence the equation holds.
-  For $x \neq 0$, we have
-  \begin{align*}
-    x = sign(x) |x| = sign(x) \abs{x} \cdot b^{-e(x)+p-1} \cdot b^{e(x)-p+1} = s(x) \cdot (d(x) + \delta(x)) \cdot b^{e(x)-p+1}
-  \end{align*}
-  as claimed.
-
-  Ad A) Note that $\delta(x)$ is of the form $y - \floor{y}$ and hence in $[0,1)$.
-
-  For $x \neq 0$, we write $|x| = b^{log_b|x|} = b^{e(x) + \eps}$, with $\eps \in [0,1)$.
-  Hence $\abs{x} / b^{e(x)} = b^\eps \in [1,b)$ and
-  \begin{align*}
-     d(x) + \delta(x) = \abs{x} \cdot b^{-e(x)+p-1} = \abs{x} / b^{e(x)} \cdot b^{p-1} \in [b^{p-1},b^p).
-  \end{align*}
-  It follows that also $d(x) = \floor{d(x) + \delta(x)} \in [ b^{p-1}, b^p )$
-  since both $b^{p-1}$ and $b^p$ are integers.
-
-  Ad C) We have
-  \begin{align*}
-    s(x) &= sign(s \cdot (d + \delta) \cdot b^{e-p+1}) = s, \\
-    e(x) &= \floor{ \log_b \abs{s \cdot (d + \delta) \cdot b^{e-p+1}} } = \floor{\log_b((d+\delta)/b^{p-1})} + e = e, \\
-    d(x) &= \floor{\abs{ s \cdot (d + \delta) \cdot b^{e-p+1} } \cdot b^{p-1-e(x)}} = \floor{d + \delta} = d, \\
-    \delta(x) &= (d + \delta) - \floor{d + \delta} = \delta.
-  \end{align*}
-  In the second equation we used, that $b^{p-1} \leq d < b^p$ and this inequality between integers
-  not changed by adding a small real number $\delta \in [0,1)$ to $d$.
-  Hence $1 \leq (d+\delta) /  b^{p-1} < b$ and $0 \leq log_b((d+\delta) /  b^{p-1}) < 1$.
+  We have to show that $\Union_{j} L_nBin[i,j] = Bin[i]$, for all $i \in I$.
+  Again we consider the linear bijection $\phi(x) = (x-a_i)/(b_i-a_i)$, which maps $Bin[i]$ to $[0,1)$ and $L_nBin[i,j]$ to $[j/n, (j+1)/n)$.
+  Hence it suffices to show that $[j/n, (j+1)/n)$ cover $[0,1)$ for $j=0,\dots,n$ which is evident.
 \end{proof}
 
-\begin{corollary}
-  A number $x \in \IR$ is of the form
-  \begin{align*}
-    x = \float_{b,p}(s,d,e)
-  \end{align*}
-  for some integers $s,d,e$ with $b^{p-1} \leq d < b^p$, $s \in \{\pm 1\}$, if and only if $\delta(x) = 0$.
-  In this case
-  \begin{align*}
-    s = s(x), \quad d = d(x), \quad e = e(x).
-  \end{align*}
-\end{corollary}
-\begin{proof}
-  By the Lemma \ref{floatlem} (B), we have
-  \begin{align*}
-    x = s(x) (d(x) + \delta(x)) b^{e(x)-p+1} = \float_{b,p}(s(x), d(x), e(x)) + \delta(x) \cdot b^{e(x) - p + 1},
-  \end{align*}
-  so $\delta(x) = 0$ implies $x = \float_{b,p}(s(x),d(x),e(x))$.
+\subsection{Log-Linear Binnings}
 
-  Conversely, if $x = \float_{b,p}(s,d,e)$ then $s = s(x), d = d(x), e = e(x), \delta(x) = 0$ by \ref{floatlem} (C).
-\end{proof}
-
-\begin{proposition} \label{hdrprop}
-  For $x \in \IR, (s,d,e) \in I_{b,p}$ we have $x \in B[s,d,e]$ if and only if $\bin_{b,p}(x) = (s,d,e)$.
-\end{proposition}
-\begin{proof}
-  Assume that $x \in B[+1,d,e]$. By definition of $B[1,d,e]$ we have
-  \begin{align*}
-    \float_{b,p}(+1,d,e) = & d \cdot b^{e-p+1} \leq x < \float_{b,p}(+1,d+1, e) = (d+1) \cdot b^{e-p+1}.
-  \end{align*}
-  Dividing by $b^{e-p+1}$ we find that $\delta := x/b^{e-p+1} - d$ lies in $[0,1)$.
-  Solving for $x$ we find $x = (d + \delta) \cdot b^{e-p+1}$, and it follows by
-  Lemma \ref{floatlem} (C), that $d=d(x), e=e(x), \delta = \delta(x)$, so $\bin_{b,p}(x) = (1,d,e)$.
-
-  Conversely if $\bin_{b,p}(x) = (1,d,e)$, then $x = (d + \delta(x)) \cdot b^{e - p + 1}$
-  \begin{align*}
-      \float_{b,p}(1,d,e) = (d + 0) \cdot b^{e - p + 1} \leq (d + \delta(x)) \cdot b^{e - p + 1} <  (d + 1) \cdot b^{e - p + 1} = \float_{b,p}(1,d+1,e)
-  \end{align*}
-  and hence $x \in B[1,d,e]$.
-
-  For $x = 0$ we have $bin(x) = (0,0,0)$ by definition.
-  Conversely if $bin(x) = (0,0,0)$ then $s(x) = 0$ so $x = 0$.
-
-  The case $x < 0$ can be derived from the first equation using the identities $bin(-x)=(-s(x),d(x),e(x))$ and $B[-1,d,e] = -B[1,d,e]$.
-\end{proof}
-
-\begin{corollary}
-  (A) The log-linear bins $B[s,d,e]$ are precisely the fibers of the map
-  \begin{align*}
-    bin_{b,p}: \IR \lra I_{b,p}, \quad x \mapsto bin_{b,p}(x) = (s(x), d(x), e(x) ),
-  \end{align*}
-  i.e. $\bin_{b,p}^{-1}\{(s,d,e)\} = B[s,d,e].$
-
-  (B) The bins $B[s,d,e], (s,d,e) \in I_{b,p}$ are disjoint and collectively cover the real axes $\IR$.
-
-  (C) log-linear histograms are well defined by Definition \ref{hdrdef} and have bin mapping $\bin_{b,p}: \IR \lra I_{b,p}$.
-
-  (D) The bin sizes for the log-linear binning is given by $size(B[s,d,e]) = b^{e-p+1}$.
-\end{corollary}
-
-\begin{proof}
-  (A) is a reformulation of Proposition \ref{hdrprop}.
-  (B) follows from (A) since the fibers $f^{-1}\{x\}$ of any map $f:X \rightarrow Y$ are disjoint and cover the domain $X$.
-  (C) follows from (B) and (A).
-
-  (D) follows directly from the definition since $\float_{b,p}(1,d+1,e)-\float_{b,p}(1,d,e) = b^{e-p+1}$.
-\end{proof}
-
-\subsection{Histogram Summaries}
-Given a binning $B_i, i\in I$ of $D \subset \IR$, and  dataset $X=(x_1,\dots, x_N) $ with values in
-$D \subset \IR$, we associate a count function:
-
-\begin{align*} c_D(i) = \# \{ j | y_j \in B_i \} \end{align*}
-
-The datum of a binning $B_i,i\in I$ and a count function $c_i,\in I$, is called a histogram summary of $X$.
-
-\subsection{Imlementation}
-
-\begin{itemize}
-\item HdrHistogram
-\item t-digest
-\end{itemize}
-
-\section{The Circllhist Datastructure}
-\begin{minted}[frame=lines,framesep=2mm]{c}
-
-struct histogram {
-  uint16_t allocd;
-  uint16_t used;
-  struct hist_bv_pair *bvs;
-};
-
-struct hist_bv_pair {
-  hist_bucket_t bucket;
-  uint64_t count;
-};
-
-typedef struct hist_bucket {
-  int8_t val;
-  int8_t exp;
-} hist_bucket_t;
-\end{minted}
-
-\section{Histogram Operations}
+\subsection{Histogram Operations}
 
 \subsection{Merging}
 
-\subsection{Mean Values}
-
 \subsection{Percentiles}
 
+\section{Implementation}
+
 \section{Evaluation}
-
-In this section compare the following quantile sketches:
-
-\begin{itemize}
-\item[exact]
-  Exact quantile estimation based on numpy arrays \url{numpy.org}
-\item[prom]
-  Quantile estimation based on \href{prometheus.io}{Prometheus} Histograms.
-  We use a hand-written Python port of the original quantile functions written in go.
-\item[hdr]
-  The High Dynamic Range Histogram data-structure was introduced in \cite{hdr}.
-  We use the Python implementation published at \url{https://github.com/HdrHistogram/HdrHistogram_py}.
-\item[t-digest]
-  The t-digest data structure was introduced in \cite{tdigest}.
-  We use Java implementation by the original authors available at \url{github.com/tdunning/t-digest}.
-\item[dd]
-  The ``Distributed Distribution Sketch'' is a histogram datastructure that was introduced in \cite{dd}.
-  We use the Python implementation published at \url{github.com/DataDog/sketches-py}
-\item[circllhist]
-  The Circonus Log-Linear Histogram datastructure described in this document.
-  We use the Python/C implementation published at \url{github.com/circonus-labs/libcircllhist}.
-\end{itemize}
-
-The Prometheus monitoring system makes use of a very simple quantile sketch that consists of a list
-of ``less than'' metrics, which count how many samples were inserted that are below manually
-configured threshold values.
-Prometheus Histograms are in wide use in practice.
-The evaluation results are highly dependent on the number and location of the chosen thresholds.
-We use the recommended number of around 10 threshold values, at locations which cover the whole
-data range with emphasis on the likely quantile locations.
-In practice these thresholds have to be chosen without knowledge of the dataset that is being recorded.
-
-The HDR Histogram method was configured to resemble the circllhist method, with a range of
-$10^{-128} .. 10^{128}$ and a accuracy of three significant digits.
-
-
 
 \clearpage
 \subsection{Calibration}
