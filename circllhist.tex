@@ -49,6 +49,7 @@
 \newcommand{\floor}[1]{\lfloor#1\rfloor}
 \newcommand{\abs}[1]{|#1|}
 \newcommand{\eps}{\epsilon}
+\newcommand{\float}{\mathrm{float}}
 
 
 \title{circllhist}
@@ -168,21 +169,24 @@ and derive basic properties and error bounds.
   In this situation we call $(J, Bin^*)$ a coarsening of $(I, Bin)$, and $(I, Bin)$ a refinement of $(J, Bin^*)$.
 \end{definition}
 
-\begin{definition}\label{lref}
+\begin{definition}
   Given a binning $Bin[i], i\in I$ with half-open bins $Bin[i] = [a_i, b_i)$.
   The length-n linear refinement of $(I, Bin)$, is given by the index set $I \times \{0,\dots, n-1\}$,
   bins
-  \begin{align*}
+  \begin{align}\label{eq:lref}
     L_nBin[i,j] = [ a_i + \frac{j}{n}(b_i - a_i), a_i + \frac{j+1}{n}(b_i - a_i) )
-  \end{align*}
-  and binning map
-  \begin{align*}
-    L_nbin(x) = ( bin(x), \floor{\frac{x - a_{bin(x)}}{b_{bin(x)} - a_{bin(x)}} \cdot n } ).
-  \end{align*}
+  \end{align}
 \end{definition}
 
+\begin{lemma}
+  The binning map of the length-n linear refinement is given by:
+  \begin{align}\label{eq:lrefmap}
+    L_nbin(x) = ( bin(x), \floor{\frac{x - a_{bin(x)}}{b_{bin(x)} - a_{bin(x)}} \cdot n } ).
+  \end{align}
+\end{lemma}
+
 \begin{proof}
-  To verify the binning map we have to show that $x \in L_nBin[ L_nbin(x) ]$ for all $x \in D$.
+  We have to show that $x \in L_nBin[ L_nbin(x) ]$ for all $x \in D$.
   Let $(i,j) = L_nbin(x)$.
   Since $i = bin(x)$, we know that $x \in [a_i, b_i)$.
   Now we consider the linear map $\phi(x) = (x-a_i)/(b_i-a_i)$ which maps $Bin[i]$ bijectively to $[0,1)$.
@@ -191,8 +195,8 @@ and derive basic properties and error bounds.
   that $\phi(x) \in \phi(L_nBin[i,j]) = [ \frac{j}{n}, \frac{j+1}{n} )$.
   And indeed,
   \begin{align*}
-    \frac{j}{n} = \frac{\floor{ n \phi(x) }}{n} \leq \phi(x)
-    \leq \frac{\ceil{n \phi(x)}}{n} < \frac{\floor{ n \phi(x) } + 1 }{n} =  \frac{j+1}{n}
+    \frac{j}{n} = \frac{\floor{ n \phi(x) }}{n} \leq \phi(x) <
+    \frac{\floor{ n \phi(x) } + 1 }{n} =  \frac{j+1}{n}.
   \end{align*}
 \end{proof}
 
@@ -207,7 +211,59 @@ and derive basic properties and error bounds.
   Hence it suffices to show that $[j/n, (j+1)/n)$ cover $[0,1)$ for $j=0,\dots,n$ which is evident.
 \end{proof}
 
-\subsection{Log-Linear Binnings}
+Now we are in a position to define Log-Linear binnings.
+
+\begin{definition}
+  The base $b$, length $n$ log-liner binning of $\IR_{>0}$ is the length-n linear refinement of the base-b Logarithmic binning of $\IR_{>0}$.
+\end{definition}
+
+\begin{proposition}\label{prop:ll}
+  Let $b,p$ be positive integers. The boundaries of the base $b$, length $n = b^p - b^{p-1}$ log-linear
+  binning or $\IR_{>0}$ are precisely the base-p precision-p floating point numbers:
+  \begin{align*}
+    \float_{b,p}(e, d) = \frac{d}{b^{p-1}} \cdot b^e = d \cdot b^{e-p+1} \qtext{with} e \in \IZ, d \in \{ b^{p-1}, \dots, b^p - 1 \}
+  \end{align*}
+  The binning map is given by
+  \begin{align*}
+    LL_{n,b}bin(x) = (e(x), d(x) - b^{p-1}), \qtext{with} e(x) = \floor{\log_b(x)},\; d(x) = \floor{x \cdot b^{-e(x) + p - 1}}
+  \end{align*}
+  with values $e(x) \in \IZ$ and $d(x) \in \{b^{p-1}, \dots, b^{o} - 1\}$.
+  This binning is also called base-b precision-p log-linear binning.
+\end{proposition}
+
+\begin{example}
+  According to Proposition \ref{prop:ll}, the base-10 precision-1 binning has bin boundaries at
+  \begin{align*}
+      \{ d \cdot 10^e  \,|\, e \in \IZ, d \in \{ 1, \dots, 9 \} \} = \{ \dots 0.8, 0.9,\; 1, 2 \dots, 8, 9,\; 10, 20 \dots \}
+  \end{align*}
+  binning map
+  \begin{align*}
+    LL_{n,b}bin(x) = (e(x), d(x) - 1), \qtext{with} e(x) = \floor{\log_{10}(x)},\; d(x) = \floor{x / 10^{e(x)}}.
+  \end{align*}
+\end{example}
+
+\begin{proof}
+  To proof Proposition \ref{prop:ll}, we compute the log-linear bin boundaries using equation \ref{eq:lref}
+  with $a_i = b^i, b_i = b^{i+1}$ and $n = b^p - b^{p-1}$:
+  \begin{align*}
+    LL_{b,n}Bin[e,j] &= [ b^e + \frac{j}{b^p - b^{p-1}}(b^{e+1} - b^e), b^e + \frac{j + 1}{b^p - b^{p-1}}(b^{e+1} - b^e) ) \\
+      &= [ b^{e-p+1}(b^{p-1} + j), b^{e-p+1}(b^{p-1} + j + 1) ) \\
+      &= [ d b^{e-p+1}, (d + 1) b^{e-p+1} )
+  \end{align*}
+  where we set $d = b^{p-1} + j$. If $j$ runs through $1 \dots n$, then $d$ runs through $b^{p-1},\dots, b^p -1$.
+  This shows that the lower boundaries are exactly the base-b precision-p floating point numbers.
+  For the upper boundary note, that the if $d=b^p-1$ then $(d+1)b^{e-p+1} = b^{p-1} b^{(e+1)-p+1}$ is again
+  a base-b precision-p floating point number (with a larger exponent).
+
+  The binning map can be explicitly calculated using Equation \ref{eq:lrefmap} as:
+  \begin{align*}
+    LL_{b,n}bin(x) &= (e(x), k(x)), \qtext{with} e(x) = \floor{\log_b(x)} \\
+    k(x) & = \floor{ \frac{x - b^{e}}{b^{e+1} - b^e} (b^p - b^{p-1}) }
+    = \floor{x \cdot b^{-e + p - 1}} - b^{p-1}
+    = d(x) - b^{p-1}
+  \end{align*}
+  as claimed.
+\end{proof}
 
 \subsection{Histogram Operations}
 
