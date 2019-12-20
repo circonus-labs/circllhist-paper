@@ -15,6 +15,8 @@
 \usepackage{microtype}      % microtypography
 \usepackage{minted}
 
+\usepackage[]{algorithm2e}
+
 \usepackage{fancyvrb}
 \usepackage{mathtools}
 \DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
@@ -34,6 +36,7 @@
 \newtheorem{remark}[definition]{Remark}
 
 % TEXT-MODE MACROS
+\newcommand{\IE}{\mathbb{E}}
 \newcommand{\IN}{\mathbb{N}}
 \newcommand{\IR}{\mathbb{R}}
 \newcommand{\IZ}{\mathbb{Z}}
@@ -50,6 +53,7 @@
 \newcommand{\abs}[1]{|#1|}
 \newcommand{\eps}{\epsilon}
 \newcommand{\float}{\mathrm{float}}
+\newcommand{\interval}[1]{[#1)}
 
 
 \title{circllhist}
@@ -264,6 +268,130 @@ Now we are in a position to define Log-Linear binnings.
   \end{align*}
   as claimed.
 \end{proof}
+
+\begin{definition}
+  The circllhist binning is the base-10 precision-2 log-linear binning extended to the real axes,
+  with bins:
+  \begin{align*}
+    CLLBin[+1,e,d] &= [ d \cdot {10}^{e-1}, (d + 1) 10^{e-1} ), \quad e \in \IZ, d \in \{ 10, \dots, 99 \} \\
+    CLLBin[0,0,0]  &= \{ 0 \} \\
+    CLLBin[-1,e,d] &= [ -d \cdot {10}^{e-1}, -(d + 1) \cdot 10^{e-1} ).
+  \end{align*}
+  The binning map is given by:
+  \begin{align*}
+    CLLbin(x)  &= (+1, e, d), e = \floor{\log_{10}(x)}, d = \floor{x \cdot 10^{-e - 1}} \\
+    CLLbin(0)  &= (0, 0, 0) \\
+    CLLbin(-x) &= (-1, e, d)
+  \end{align*}
+  for $x > 0$.
+\end{definition}
+
+\begin{proposition} \label{prop:rec}
+  The binning map of the circllhist can be recursively computed as follows:
+
+  \begin{figure}[h]
+  \begin{cetner}
+    \begin{BVerbatim}
+  function CLLbin(x)
+    if x == 0:
+      return (0,0,0)
+    if x < 0:
+      (s, e, d) := CLLbin(-x)
+      return (-1, e, d)
+    if x < 10:
+      return CLLbin(x * 10) - (0, 1, 0)
+    if x > 100:
+      return CLLbin(x / 10) + (0, 1, 0)
+    else: # 10 <= x < 100:
+      return (+1, 1, floor(x))
+  end
+    \end{BVerbatim}
+  \end{cetner}
+  \end{figure}
+
+  In particular, the circllhist binning map can be computed without use of the logarithm function.
+\end{proposition}
+
+\begin{proof}
+  The recursion terminates since every positive number $x$ can be brought into range $10 \leq x <
+  100$ with a finite number of divisions or multiplications by $10$.  It's straight forward to
+  verify that each case computes valid results assuming that the results of the recursive call are
+  correct.
+\end{proof}
+
+\begin{remark}
+  If $x,e$ are integers, than the binning map of the number $x \cdot 10^{e}$ can be computed without
+  the use of floating point arithmetic as $CLLbin(x) + (0,e,0)$ using Algorithm \ref{prop:rec}.
+
+  This is of practical relevance when used in an environment which do not have floating
+  point arithmetic available. One example being nano-second latencies measured in the Linux kernel,
+  or embedded devices.
+\end{remark}
+
+\subsection{Paretro Midpoints}
+
+\begin{proposition} \label{prop:pdist}
+  Given an interval $[a,b]$ in $\IR_{>0}$ the unique point $m$ in $[a,b]$ so that the maximal
+  relative distance $rd(m, y) = |m-y|/y$ to all other points in $[a,b]$ is minimized
+  by the paretro midpoint
+  $m = 2ab / (a + b)$.
+
+  The maximal relative distance to the paretro midpoint is is $(b - a) / (a + b)$
+\end{proposition}
+
+\begin{proof}
+  We have to minimize the function $maxrd(x) = max_{y\in[a,b]} rd(x, y)$ over $[a,b]$.
+  The maximum $max_{y\in[a,b]} rd(x, y)$ is attained either for $y = a$ or $y = b$,
+  hence $maxrd(x) = max\{ rd(x,a), rd(x,b) \}$.
+
+  Note that the function $f(x) = rd(x, a)$ is continues and strictly monotonically increasing on $[a,b]$, with $f(a) = 0, f(b) > 0$,
+  and the function $g(x) = rd(x, b)$ is continues and strictly monotonically decreasing on $[a,b]$, with $g(a) > 0$ and $g(b) = 0$.
+  The point $m$ is the unique point in $[a,b]$ where both functions are equal, with
+  \begin{align*}
+    rd(m, a) = \frac{b - a}{a + b} = rd(m, b)
+  \end{align*}
+  Now if $a \leq x < m$ then $rd(x, b) = g(x) > g(m)$ and so $maxrd(x) > maxrd(m) = g(m)$.
+  Similarly if $m < x \leq b$ then $rd(x, a) = f(x) > f(m)$ and so $maxrd(x) > maxrd(m) = f(m)$.
+
+  This shows that $x=m$ is the unique minimum of $maxrd(x)$ on $[a,b]$.
+\end{proof}
+
+The following proposition gives a probabilistic interpretation of the location of relative distance minimizing midpoint.
+Recall, that the expected value of a uniformly distributed random variable $X \sim U[a,b]$ is the midpoint $\IE[X] = (a+b)/2$.
+
+\begin{proposition}
+  Given an interval $[a,b]$, and an a=2 paretro distributed random variable $X$, then
+  \begin{align*}
+    \IE[ X \, | \, X \in [a,b] \,] = 2ab / (a + b),
+  \end{align*}
+\end{proposition}
+
+\begin{proof}
+  The paretro distribution has density $p(x) =C \cdot 1/x^{a+1}$, for some positive constant $C$, so for $a=2$ we get
+  \begin{align*}
+    \IE[ X \, | \, X \in [a,b] \,] = \frac{\int_a^b x p(x) dx}{\int_a^b p(x) dx}
+    = \frac{\int_a^b x^{-2}  dx}{\int_a^b x^{-3} dx} = 2 \frac{b^{-1} - a^{-1}}{b^{-2}- a^{-2}}
+    = \frac{2}{b^{-1} + a^{-1}}
+    = 2 \frac{ab}{a + b}
+  \end{align*}
+  which proves the claim.
+\end{proof}
+
+\begin{prosition}
+  The maximal relative distance to the paretro midpoint of a bin in the circllhist binning is $1/21 = 4.76\%$
+\end{prosition}
+
+\begin{proof}
+  Substituting the bin boundaries into the formula given in Proposition \ref{prop:pdist} we find
+  $(b - a)(a + b) = 1/(2d + 1)$ for the bin $CLLBin[e,d], e \in \IZ, d \in \{ 10, \dots, 99 \}$.
+  This is minimized for $d = 10$ with a value of $1/21$ as claimed.
+\end{proof}
+
+\subsection{Histograms}
+
+\begin{definition}
+  A histogram with domain $D \subset \IR$ is a binning $Bin[i],I$, together with a count function $c: I \ra \IN_{0}$.
+\end{definition}
 
 \subsection{Histogram Operations}
 
