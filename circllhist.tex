@@ -539,6 +539,10 @@ For our discussion the following two variants are relevant:
 \end{definition}
 
 This definition is consistent with the numbering in \cite{HF1996}.
+Figure \ref{fig:qc} shows a plot of these quantile definitions as functions on $q$.
+A detailed comparison between type-1 and type-7 quantiles can be found at \cite{HH19}.
+Here we only note, that these definitions give very similar values in densely populated areas of a dataset.
+Large differences can occur at the tails of the distribution where values are sparse and far apart.
 
 From a theoretical perspective type-1 quantiles are the most natural, since they correspond the
 probabilistic quantiles for the empirical distribution function of the dataset $X$.
@@ -574,8 +578,7 @@ with the alternative methods evaluated in this article.
 
 \section{Implementation}
 
-
-* Binning is fixed once and for all.
+* Binning is fixed once and for all
 * Bins are represented as exponent (8bit) + mantissa (8bit?).
 * Sparse encoding of histogram as list of bin+count pairs
 * Fast insertion tricks
@@ -589,6 +592,7 @@ with the alternative methods evaluated in this article.
    \includegraphics[width=\textwidth / 2]{evaluation/images/theoretical_quantile_comparison.png}
    \includegraphics[width=\textwidth / 2]{evaluation/images/practical_quantile_comparison.png}
    \caption{Comparison of quantile functions for the data set $[100,200,300,400]$ }
+   \label{fig:qc}
 \end{figure}
 
 \begin{figure}
@@ -733,6 +737,10 @@ G. Tene,
 \bibitem{numpy} Travis E. Oliphant.
   \newblock A guide to NumPy
   \newblock Trelgol Publishing, (2006). \url{https://numpy.org/}
+
+\bibitem{HH19} H. Hartmann.
+  \newblock Quantiles
+  \newblock Blog, 2019. \url{https://www.heinrichhartmann.com/math/quantiles.html}
 
 \end{thebibliography}
 \end{document}
