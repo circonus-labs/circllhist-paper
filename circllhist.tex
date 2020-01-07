@@ -229,7 +229,7 @@ Now we are in a position to define Log-Linear binnings.
   \end{align*}
   The binning map is given by
   \begin{align*}
-    LL_{n,b}bin(x) = (e(x), d(x) - b^{p-1}), \qtext{with} e(x) = \floor{\log_b(x)},\; d(x) = \floor{x \cdot b^{-e(x) + p - 1}}
+    bin(x) = (e(x), d(x) - b^{p-1}), \qtext{with} e(x) = \floor{\log_b(x)},\; d(x) = \floor{x \cdot b^{-e(x) + p - 1}}
   \end{align*}
   with values $e(x) \in \IZ$ and $d(x) \in \{b^{p-1}, \dots, b^{o} - 1\}$.
   This binning is also called base-b precision-p log-linear binning.
@@ -242,7 +242,7 @@ Now we are in a position to define Log-Linear binnings.
   \end{align*}
   binning map
   \begin{align*}
-    LL_{n,b}bin(x) = (e(x), d(x) - 1), \qtext{with} e(x) = \floor{\log_{10}(x)},\; d(x) = \floor{x / 10^{e(x)}}.
+    bin(x) = (e(x), d(x) - 1), \qtext{with} e(x) = \floor{\log_{10}(x)},\; d(x) = \floor{x / 10^{e(x)}}.
   \end{align*}
 \end{example}
 
@@ -250,7 +250,7 @@ Now we are in a position to define Log-Linear binnings.
   To proof Proposition \ref{prop:ll}, we compute the log-linear bin boundaries using equation \ref{eq:lref}
   with $a_i = b^i, b_i = b^{i+1}$ and $n = b^p - b^{p-1}$:
   \begin{align*}
-    LL_{b,n}Bin[e,j] &= [ b^e + \frac{j}{b^p - b^{p-1}}(b^{e+1} - b^e), b^e + \frac{j + 1}{b^p - b^{p-1}}(b^{e+1} - b^e) ) \\
+    Bin[e,j] &= [ b^e + \frac{j}{b^p - b^{p-1}}(b^{e+1} - b^e), b^e + \frac{j + 1}{b^p - b^{p-1}}(b^{e+1} - b^e) ) \\
       &= [ b^{e-p+1}(b^{p-1} + j), b^{e-p+1}(b^{p-1} + j + 1) ) \\
       &= [ d b^{e-p+1}, (d + 1) b^{e-p+1} )
   \end{align*}
@@ -261,7 +261,7 @@ Now we are in a position to define Log-Linear binnings.
 
   The binning map can be explicitly calculated using Equation \ref{eq:lrefmap} as:
   \begin{align*}
-    LL_{b,n}bin(x) &= (e(x), k(x)), \qtext{with} e(x) = \floor{\log_b(x)} \\
+    bin(x) &= (e(x), k(x)), \qtext{with} e(x) = \floor{\log_b(x)} \\
     k(x) & = \floor{ \frac{x - b^{e}}{b^{e+1} - b^e} (b^p - b^{p-1}) }
     = \floor{x \cdot b^{-e + p - 1}} - b^{p-1}
     = d(x) - b^{p-1}
@@ -273,15 +273,15 @@ Now we are in a position to define Log-Linear binnings.
   The circllhist binning is the base-10 precision-2 log-linear binning extended to the real axes,
   with bins:
   \begin{align*}
-    CLLBin[+1,e,d] &= [ d \cdot {10}^{e-1}, (d + 1) 10^{e-1} ), \quad e \in \IZ, d \in \{ 10, \dots, 99 \} \\
-    CLLBin[0,0,0]  &= \{ 0 \} \\
-    CLLBin[-1,e,d] &= [ -d \cdot {10}^{e-1}, -(d + 1) \cdot 10^{e-1} ).
+    Bin[+1,e,d] &= [ d \cdot {10}^{e-1}, (d + 1) 10^{e-1} ), \quad e \in \IZ, d \in \{ 10, \dots, 99 \} \\
+    Bin[0,0,0]  &= \{ 0 \} \\
+    Bin[-1,e,d] &= [ -d \cdot {10}^{e-1}, -(d + 1) \cdot 10^{e-1} ).
   \end{align*}
   The binning map is given by:
   \begin{align*}
-    CLLbin(x)  &= (+1, e, d), e = \floor{\log_{10}(x)}, d = \floor{x \cdot 10^{-e - 1}} \\
-    CLLbin(0)  &= (0, 0, 0) \\
-    CLLbin(-x) &= (-1, e, d)
+    bin(x)  &= (+1, e, d), e = \floor{\log_{10}(x)}, d = \floor{x \cdot 10^{-e - 1}} \\
+    bin(0)  &= (0, 0, 0) \\
+    bin(-x) &= (-1, e, d)
   \end{align*}
   for $x > 0$.
 \end{definition}
@@ -292,16 +292,16 @@ Now we are in a position to define Log-Linear binnings.
   \begin{figure}[h]
   \begin{cetner}
     \begin{BVerbatim}
-  function CLLbin(x)
+  function bin(x)
     if x == 0:
       return (0,0,0)
     if x < 0:
-      (s, e, d) := CLLbin(-x)
+      (s, e, d) := bin(-x)
       return (-1, e, d)
     if x < 10:
-      return CLLbin(x * 10) - (0, 1, 0)
+      return bin(x * 10) - (0, 1, 0)
     if x > 100:
-      return CLLbin(x / 10) + (0, 1, 0)
+      return bin(x / 10) + (0, 1, 0)
     else: # 10 <= x < 100:
       return (+1, 1, floor(x))
   end
@@ -321,7 +321,7 @@ Now we are in a position to define Log-Linear binnings.
 
 \begin{remark}
   If $x,e$ are integers, than the binning map of the number $x \cdot 10^{e}$ can be computed without
-  the use of floating point arithmetic as $CLLbin(x) + (0,e,0)$ using Algorithm \ref{prop:rec}.
+  the use of floating point arithmetic as $bin(x) + (0,e,0)$ using Algorithm \ref{prop:rec}.
 
   This is of practical relevance when used in an environment which do not have floating
   point arithmetic available. One example being nano-second latencies measured in the Linux kernel,
@@ -383,7 +383,7 @@ Recall, that the expected value of a uniformly distributed random variable $X \s
 
 \begin{proof}
   Substituting the bin boundaries into the formula given in Proposition \ref{prop:pdist} we find
-  $(b - a)(a + b) = 1/(2d + 1)$ for the bin $CLLBin[e,d], e \in \IZ, d \in \{ 10, \dots, 99 \}$.
+  $(b - a)(a + b) = 1/(2d + 1)$ for the bin $Bin[e,d], e \in \IZ, d \in \{ 10, \dots, 99 \}$.
   This is minimized for $d = 10$ with a value of $1/21$ as claimed.
 \end{proof}
 
@@ -432,6 +432,8 @@ We can easily see that the histogram merge computes is compatible with merge (co
     &= H_X(i) + H_Y(i). \qedhere
   \end{align*}
 \end{proof}
+
+TODO: Upper/Lower counts
 
 \subsubsection{Histogram Operations}
 
@@ -521,33 +523,54 @@ For our discussion the following two variants are relevant:
 \begin{definition}
   Given a dataset $X=(x_1,\dots,x_n), n>0$ of real numbers, and a number $q \in [0,1]$.
   Let $x_{(1)} \leq x_{(2)} \leq \dots \leq x_{(n)}$ be the ordered version of $X$.
-  We define the minimal type-I q-quantile as
+  We define the minimal type-1 q-quantile as
   \begin{align*}
-    Q^1_0(X) = x_{(1)} \qtext{and}  Q^I_q(X) = x_{(\ceil{q \cdot n})} \qtext{for} q > 0.
+    Q^1_0(X) = x_{(1)} \qtext{and}  Q^1_q(X) = x_{(\ceil{q \cdot n})} \qtext{for} q > 0.
   \end{align*}
-  We define the minimal type-VII quantile is given by:
+  We define the minimal type-7 quantile is given by:
   \begin{align*}
     Q^{7}_q(X) = x_{(\floor{q \cdot (n - 1)} + 1)}.
   \end{align*}
-  The interpolated type-VII quantile is given by:
+  The interpolated type-7 quantile is given by:
   \begin{align*}
-    Q^{7i}_q(X) = \gamma \cdot x_{(\floor{q \cdot (n - 1)} + 1)} + (1-\gamma) \cdot x_{(\ceil{q \cdot (n - 1)} + 1)},
+    Q^{7i}_q(X) = (1 - \gamma) \cdot x_{(\floor{q \cdot (n - 1)} + 1)} + \gamma \cdot x_{(\ceil{q \cdot (n - 1)} + 1)},
   \end{align*}
-  where the interpolation factor $\gamma \in [0,1]$ is calculated as $q(n-1) - \floor{q(n-1)}$.
+  where the interpolation factor $\gamma \in [0,1]$ is calculated as $\gamma = q(n-1) - \floor{q(n-1)}$.
 \end{definition}
 
 This definition is consistent with the numbering in \cite{HF1996}.
 
-* Type-1 quantiles are consistent with probability theory (empirical distribution function).
+From a theoretical perspective type-1 quantiles are the most natural, since they correspond the
+probabilistic quantiles for the empirical distribution function of the dataset $X$.
+Also they allow to formulate precise statements about lower counts:
 
-* Type-1 quantiles allow to derive precise statements about the lower counts, e.g.
+\begin{proposition}
+  Let $X$ be a dataset of length $n > 1$, $y \in \IR$ a threshold value and $0 < q \leq 1$.
+  Then the following statements are equivalent:
+  \begin{itemize}
+  \item[(1)] There are at least $q n$ datapoints $x$ in $X$ with $x \leq y$.
+  \item[(2)] We have $Q^1_q(X) \leq y$.
+  \end{itemize}
+\end{proposition}
 
-> 95\% of all requests were served within 500ms IFF p95 < 500ms
+\begin{proof}
+  To show (1) implies (2), assume that there are at least $q n$ datapoints below $y$.
+  Since the number of datapoints is always an integer, the same holds for $r = \ceil{q n}$.
+  This implies that the ordered values $x_{(1)}, \dots, x_{(r)}$ all lie below $y$,
+  and hence $x_{(r)} = Q^1_q(X) \leq y$.
 
-This is not true for Type-7 quantiles, which make statments about 95% of (n-1) requests.
+  To show (1) implies (2), assume that $Q^1_q(X) \leq y$ then the $r = \ceil{n q}$ values $x_{(1)},
+  \dots, x_{(r)} = Q^1_q(X)$ all lie below $y$. This shows there are at least $n q$
+  datapoints lie below $y$.
+\end{proof}
 
-* Type-7 quantiles are most commonly found in software packages and used in dd-sketch, t-digest, hdr?!
+Somewhat surprisingly, type-7 quantiles are more commonly found in software packages.
+E.g. numpy \cite{numpy} computes interpolated type-7 quantiles by default.
+Also DDSketch \cite{dd} and t-digest \cite{tdigest} implement variants of type-7 quantiles.
 
+The circllhist implementation computes by default minimal type-1 quantiles on the fair resampling of
+the histogram.  It also comes with a minimal type-7 quantile implementation for better comparison
+with the alternative methods evaluated in this article.
 
 \section{Implementation}
 
@@ -706,6 +729,10 @@ G. Tene,
   Hyndman, R. J. and Fan, Y.
   \newbloack Sample quantiles in statistical packages
   \newblock American Statistician 50, 361–365. 10.2307/2684934, 1996
+
+\bibitem{numpy} Travis E. Oliphant.
+  \newblock A guide to NumPy
+  \newblock Trelgol Publishing, (2006). \url{https://numpy.org/}
 
 \end{thebibliography}
 \end{document}
