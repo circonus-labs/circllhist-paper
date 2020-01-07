@@ -79,7 +79,7 @@
   large numbers of latency measurements.
   It is particularly suited for applications in IT infrastructure monitoring.
 
-  It provides sub microsecond data insertion,
+  It provides nano-second data insertion,
   full mergability,
   accurcate approximation of percentiles with a-priori bounds on the maximal error.
 
@@ -113,7 +113,7 @@ and impractical for high volume sources like function-call or syscall latencies.
 Direct calculation of quantiles, does not allow further aggregation, so that accurate quantiles
 for the total population can not be calculated.
 
-Circonus has addressed this problem with the circllhist datastructure, that we describe in this document.
+Circonus has addressed this problem with the circllhist data-structure, that we describe in this document.
 It has been in and production use since 2011.
 Have talked about this at various conferences and blogs (e.g. \cite{TS0},\cite{TS1},\cite{TS2}, \cite{HH1}).
 An open source implementation is available at \cite{libcircllhist}.
@@ -124,14 +124,16 @@ that have been adopted by other monitoring vendors since then.
 
 \section{Related Work}
 
-In the last years, the awareness of this problem has gradually grown and other vendors in the
-Monitoring domain have started to address this problem as well.
+There is also a fair bit of work in the academic literature on the problem of efficiently
+calculating aggregated quantiles since 1980. This runs under the name ``mergable summaries'' and
+``quantile sketches''. A good summary of these methods can be found in \cite{dd}, Section 1.2.
+Here we focus on methods that have been widely adopted in practice.
 
-A very similar approach to ours has been promoted and implemented by G. Tene from Aszul Systems
-who developed a High Definition Range (HDR) Histogram data-structure \cite{hdr} to capture latency
-data in Benchmarking applications.
+A very similar approach to ours has been suggested by G. Tene from Aszul Systems who developed
+a High Definition Range (HDR) Histogram data-structure \cite{hdr} to capture latency
+data for benchmarking applications.
 
-Dunning and Erl developed the t-digest data structure in \cite{tdigest}, which is used in the
+T. Dunning and O. Erl developed the t-digest data structure in \cite{tdigest}, which is used in the
 Wavefront product. The t-digest aggregates nearby points into clusters of adaptive size, in such a
 way, that high resolution data is available at the tails of the distribution, where it's most
 critical for applications.
@@ -141,12 +143,9 @@ rough summarization of the distribution with a set of numeric time series.
 
 Most recently Data Dog has published a logarithmic histogram data structure DDSketch in \cite{dd}.
 
-There is also a fair bit of work in the academic literature on the problem of efficiently
-calculating aggregated quantiles since 1980. This runs under the name ``mergable summaries'' and
-``quantile sketches''. A good summary of these methods can be found in \cite{dd}, Section 1.2.
-
-Here we focus on methods that are implemented in the above mentioned methods that are implemented in
-monitoring products and have been widely used in practice.
+In the next section we will develop some theory around general histogram summaries, that allows
+us to precisely define and compare the HDR Histograms, DDSketches, and the circllhist.
+in section \ref{sec:eval}.
 
 \section{Theory}
 
@@ -156,7 +155,7 @@ monitoring products and have been widely used in practice.
   \label{fig:llbins}
 \end{figure}
 
-The idea behind the circllhist is illustrated in Figure \ref{fig:llbins}, and quick to explain.
+The basic idea behind log linear histograms like the circllhist is illustrated in Figure \ref{fig:llbins}.
 We start with a logarithmic binning of the real axes, that has bins at the powers of ten.
 \begin{center}
   \begin{BVerbatim}
@@ -178,8 +177,7 @@ This information allows us to approximate the original location of the inserted 
 maximal relative error less than $5\%$.
 
 In this section we develop an abstract theory of histograms to a degree that allows us to
-formally define circllhist as a linear refinement of a logarithmic histogram structure,
-and derive basic properties and error bounds.
+formally define circllhist as a linear refinement of a logarithmic histogram structure.
 
 \subsection{Binnings}
 
@@ -327,7 +325,7 @@ Now we are in a position to define Log-Linear binnings.
   as claimed.
 \end{proof}
 
-\begin{definition}
+\begin{definition}\label{def:circllhist}
   The circllhist binning is the base-10 precision-2 log-linear binning extended to the real axes,
   with bins:
   \begin{align*}
@@ -345,11 +343,10 @@ Now we are in a position to define Log-Linear binnings.
 \end{definition}
 
 \begin{proposition} \label{prop:rec}
-  The binning map of the circllhist can be recursively computed as follows:
+  The binning map of the circllhist can be recursively computed with the following algorithm:
 
-  \begin{figure}[h]
   \begin{cetner}
-    \begin{BVerbatim}
+    \begin{BVerbatim}[fontfamily=tt]
   function bin(x)
     if x == 0:
       return (0,0,0)
@@ -365,7 +362,6 @@ Now we are in a position to define Log-Linear binnings.
   end
     \end{BVerbatim}
   \end{cetner}
-  \end{figure}
 
   In particular, the circllhist binning map can be computed without use of the logarithm function.
 \end{proposition}
@@ -647,12 +643,31 @@ with the alternative methods evaluated in this article.
 
 \section{Implementation}
 
-* Binning is fixed once and for all
-* Bins are represented as exponent (8bit) + mantissa (8bit?).
-* Sparse encoding of histogram as list of bin+count pairs
-* Fast insertion tricks
+The data-structure implemented in \cite{libcircllhist}, implements the a circllhist in the sense of
+definition \ref{dec:circllhist} with exponent range limited to $-128 \leq e < 127$.
+In this way, both exponent $e$ and mantissa $d$ can be represented by 8-bit integers.
+
+A circllhist is internally represented as a list of (bin, count) pairs.
+The counts are 64 bit integers.
+If a bin has a count of 0, then it can be skipped in the representation.
+The serialized form of the histogram will only contain bins with non-zero counts.
+
+The theoretical maximum of used bins is $2 \times 236 \times 90 + 1 = 46081$
+(for sign, exponent, mantissa and zero bucket).
+In practice we have not seen a histogram with more than 300 allocated bins.
+
+A number of performance optimizations are implemented.
+
+\begin{enumerate}
+\item A number of bin,count pairs can be pre-allocated at creation of the structure.
+\item Powers of ten have been statically pre-computed.
+\item Integer values with a given decimal exponent can be directly inserted (e.g. ns values) without
+  using floating point arithmetic cf. Proposition \ref{prop:rec}.
+\end{enumerate}
+
 
 \section{Evaluation}
+\label{sec:eval}
 
 In this section compare the following quantile sketches:
 
@@ -791,7 +806,7 @@ statistical operations like percentiles.
 
 In comparison to the other methods:
 
-- circllhist is the oldest method, dating back to 2013 when it was first introduced in Circonus.
+- circllhist is the oldest method, dating back to 2011 when it was first introduced in Circonus.
 
 - circllhist allows exact less-than counts at decimal floating point numbers
 
