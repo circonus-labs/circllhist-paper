@@ -75,21 +75,79 @@
 \maketitle
 
 \begin{abstract}
-  The circllhist histogram is a simple, fast and memory efficient data structure for capturing
-  and processing large number of samples, that is particularly suited for applications in
-  IT infrastructure monitoring.
+  The circllhist histogram is a fast and memory efficient data structure for summarizing distributions of
+  large numbers of latency measurements.
+  It is particularly suited for applications in IT infrastructure monitoring.
 
-  The circllhist allows arbitrary merging of pre-aggregated data without additional loss of accuracy,
-  and the approximation of percentiles with low expected error and a-priori bounded maximal error.
+  It provides sub microsecond data insertion,
+  full mergability,
+  accurcate approximation of percentiles with a-priori bounds on the maximal error.
 
   Open-source implementations are available for C/lua/python/Go/Java/JavaScript.
 \end{abstract}
 
-\tableofcontents
+\section{Introduction}
 
-\input{part1.tex}
+Latency measurements have become an important part of IT infrastructure and application monitoring.
+The latencies of a wide variety of events like requests, function calls, garbage collection, disk
+IO, syscall, CPU scheduling, etc. are of great interest of engineers operating and developing IT systems.
 
-\clearpage
+There are a number of technical challenges associated with managing and analyzing latency data.
+The volume emitted by a single data source can easily become very large.  Data has to be collected and
+aggregated from a large number of different sources.  The data has to be stored over long time
+periods (months, years), in order to allow historic comparisons and long-term service quality
+estimations (SLOs).
+
+In order to address these challenges a compression scheme has to be applied, that drastically
+reduces the size of the data to be stored and transmitted.  Such a compression scheme needs to allow
+at minimum (1) arbitrary aggregation of already compressed data, (2) accurate quantile
+approximations, with a-priori bounds on the relative error (3) accurate counting of requests larger
+or lower than a given threshold. Furthermore it's beneficial if (4) information about the full
+distribution is retained, so that general probabilistic modeling techniques can be applied.
+
+Traditionally monitoring tools, either store raw data for to base the calculation on [cf. log analysis tools],
+compute latency quantiles on each host separately and store them as numeric time series [statsd].
+Both approaches have obvious drawbacks.
+The high volume of data makes raw data storage uneconomical for sources like request latencies,
+and impractical for high volume sources like function-call or syscall latencies.
+Direct calculation of quantiles, does not allow further aggregation, so that accurate quantiles
+for the total population can not be calculated.
+
+Circonus has addressed this problem with the circllhist datastructure, that we describe in this document.
+It has been in and production use since 2011.
+Have talked about this at various conferences and blogs (e.g. \cite{TS0},\cite{TS1},\cite{TS2}, \cite{HH1}).
+An open source implementation is available at \cite{libcircllhist}.
+However, no academic paper was published until now.
+
+This document describes the circllhist data-structure and compares it to other methods
+that have been adopted by other monitoring vendors since then.
+
+\section{Related Work}
+
+In the last years, the awareness of this problem has gradually grown and other vendors in the
+Monitoring domain have started to address this problem as well.
+
+A very similar approach to ours has been promoted and implemented by G. Tene from Aszul Systems
+who developed a High Definition Range (HDR) Histogram data-structure \cite{hdr} to capture latency
+data in Benchmarking applications.
+
+Dunning and Erl developed the t-digest data structure in \cite{tdigest}, which is used in the
+Wavefront product. The t-digest aggregates nearby points into clusters of adaptive size, in such a
+way, that high resolution data is available at the tails of the distribution, where it's most
+critical for applications.
+
+The Prometheus monitoring system \cite{prom} has added a simple histogram data-type that allows a
+rough summarization of the distribution with a set of numeric time series.
+
+Most recently Data Dog has published a logarithmic histogram data structure DDSketch in \cite{dd}.
+
+There is also a fair bit of work in the academic literature on the problem of efficiently
+calculating aggregated quantiles since 1980. This runs under the name ``mergable summaries'' and
+``quantile sketches''. A good summary of these methods can be found in \cite{dd}, Section 1.2.
+
+Here we focus on methods that are implemented in the above mentioned methods that are implemented in
+monitoring products and have been widely used in practice.
+
 \section{Theory}
 
 \begin{figure}
@@ -433,7 +491,18 @@ We can easily see that the histogram merge computes is compatible with merge (co
   \end{align*}
 \end{proof}
 
-TODO: Upper/Lower counts
+\def\hyph{{\hbox{-}}}
+
+\begin{remark}
+  Let $H$ be a histogram summary of a dataset $X$, and a threshold value $y$.  The count functions
+  $count\hyph below_X(y) = \#\{ i | x_i < y \}$ and $count\hyph above_X(y) = \#\{ i | x_i \geq y \}$
+  are of great practical interest. If the bin boundaries line-up with the threshold, we can
+  get exact approximations of those functions from the histogram.
+
+  In the case of the circllhist, we get exact counts for every 2-digit precision decimal floating point number.
+
+  For logarithmic histograms we get exact counts at the powers of the base $b^e, e\in \IZ$.
+\end{remark}
 
 \subsubsection{Histogram Operations}
 
@@ -585,6 +654,47 @@ with the alternative methods evaluated in this article.
 
 \section{Evaluation}
 
+In this section compare the following quantile sketches:
+
+\begin{itemize}
+\item[exact]
+  Exact quantile estimation based on numpy arrays \cite{numpy}.
+\item[prom]
+  Quantile estimation based on Prometheus Histograms \cite{prom}.
+  We use a hand-written Python port of the original quantile functions written in go.
+\item[hdr]
+  The High Dynamic Range Histogram data-structure was introduced in \cite{hdr}.
+  We use the Python implementation published at \url{https://github.com/HdrHistogram/HdrHistogram_py}.
+\item[t-digest]
+  The t-digest data structure was introduced in \cite{tdigest}.
+  We use Java implementation by the original authors available at \url{github.com/tdunning/t-digest}.
+\item[dd]
+  The ``Distributed Distribution Sketch'' is a histogram datastructure that was introduced in \cite{dd}.
+  We use the Python implementation published at \url{github.com/DataDog/sketches-py}.
+\item[circllhist]
+  The Circonus Log-Linear Histogram datastructure described in this document.
+  We use the Python/C implementation published at \url{github.com/circonus-labs/libcircllhist}.
+\end{itemize}
+
+The Prometheus monitoring system makes use of a very simple quantile sketch that consists of a list
+of ``less than'' metrics, which count how many samples were inserted that are below manually configured
+threshold values.
+Prometheus Histograms are included here for their wide use in practice.
+The method itself is not really comparable, since it the results are highly dependent on the number
+and location of the chosen thresholds.
+We use the recommended number of around 10 threshold values, at locations which cover the whole
+data range with emphasis on the likely quantile locations.
+
+The HDR Histogram method was configured to resemble the circllhist method, with a range of
+$10^{-128} .. 10^{128}$ and a accuracy of three significant digits.
+
+The t-digest
+
+* Contenders and Parameters.
+
+* Re-running evaluation using docker and Jupyter Notebook.
+
+
 \clearpage
 \subsection{Calibration}
 
@@ -709,20 +819,40 @@ T-digest
 \bibliographystyle{unsrt}
 \begin{thebibliography}{1}
 
+\bibitem{TS0}
+  T.Schlossnagle.
+  \newblock What's in a number?
+  \newblock NYCDevOps 2011. Slides: \url{https://www.slideshare.net/postwait/whats-in-a-number}
+
+\bibitem{TS1}
+  T. Schlossnagle.
+  \newblock It's all about telemetry.
+  \newblock Velocity 2012. Slides: \url{https://www.slideshare.net/postwait/its-all-about-telemetry}
+
+\bibitem{TS2}
+  T. Schlossnagle.
+  \newblock Understanding data with Histograms.
+  \newblock Blog 2012. \url{https://www.circonus.com/2012/09/understanding-data-with-histograms/}
+
+\bibitem{HH1}
+  H. Hartmann.
+  \newblock Latency SLOs done right.
+  \newblock SRECon 2018. \url{https://www.usenix.org/conference/srecon19emea/presentation/hartmann-latency}
+
 \bibitem{tdigest}
-T. Dunning and O. Ertl.
-\newblock  Computing extremeley accurate quantiles using t-digests.
-\newblock \url{https://github.com/tdunning/t-digest}, 2017.
+  T. Dunning and O. Ertl.
+  \newblock  Computing extremeley accurate quantiles using t-digests.
+  \newblock \url{https://github.com/tdunning/t-digest}, 2017.
 
 \bibitem{dd}
-M. Charles, J.E. Rim, H.K. Lee.
-\newblock DDSketch: A fast and fully-mergeable quantile sketch with relative-error guarantees.
-\newblock Proceedings of the VLDB Endowment 12.12 (2019): 2195-2205.
+  M. Charles, J.E. Rim, H.K. Lee.
+  \newblock DDSketch: A fast and fully-mergeable quantile sketch with relative-error guarantees.
+  \newblock Proceedings of the VLDB Endowment 12.12 (2019): 2195-2205.
 
 \bibitem{hdr}
-G. Tene,
-\newblock HdrHistogram: A high dynamic range (hdr) histogram
-\newblock \url{http://hdrhistogram.org/}, 2012
+  G. Tene.
+  \newblock HdrHistogram: A high dynamic range (hdr) histogram
+  \newblock \url{http://hdrhistogram.org/}, 2012
 
 \bibitem{libcircllhist}
   Circonus.
@@ -731,16 +861,23 @@ G. Tene,
 
 \bibitem{HF1996}
   Hyndman, R. J. and Fan, Y.
-  \newbloack Sample quantiles in statistical packages
+  \newblock Sample quantiles in statistical packages
   \newblock American Statistician 50, 361–365. 10.2307/2684934, 1996
 
-\bibitem{numpy} Travis E. Oliphant.
+\bibitem{numpy}
+  Travis E. Oliphant.
   \newblock A guide to NumPy
   \newblock Trelgol Publishing, (2006). \url{https://numpy.org/}
 
-\bibitem{HH19} H. Hartmann.
+\bibitem{HH19}
+  H. Hartmann.
   \newblock Quantiles
   \newblock Blog, 2019. \url{https://www.heinrichhartmann.com/math/quantiles.html}
+
+\bibitem{prom}
+  Prometheus.
+  \newblock An open-source systems monitoring and alerting toolkit.
+  \newblock \url{https://prometheus.io/}
 
 \end{thebibliography}
 \end{document}
