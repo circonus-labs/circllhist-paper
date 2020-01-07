@@ -58,7 +58,7 @@
 
 \title{circllhist}
 
-\subtitle{The Circonus Log-Linear Histogram}
+\subtitle{The Log-Linear Histograms for IT Infrastructure Monitoring}
 
 \author{
   Heinrich Hartmann \\
@@ -377,9 +377,9 @@ Recall, that the expected value of a uniformly distributed random variable $X \s
   which proves the claim.
 \end{proof}
 
-\begin{prosition}
-  The maximal relative distance to the paretro midpoint of a bin in the circllhist binning is $1/21 = 4.76\%$
-\end{prosition}
+\begin{proposition}\label{prop:21}
+  The maximal relative distance to a paretro midpoint in the circllhist binning is $1/21 \approx 4.76\%$.
+\end{proposition}
 
 \begin{proof}
   Substituting the bin boundaries into the formula given in Proposition \ref{prop:pdist} we find
@@ -389,17 +389,173 @@ Recall, that the expected value of a uniformly distributed random variable $X \s
 
 \subsection{Histograms}
 
+Once we have established our binnings. Histograms are easy to define.
+
 \begin{definition}
-  A histogram with domain $D \subset \IR$ is a binning $Bin[i],I$, together with a count function $c: I \ra \IN_{0}$.
+  A histogram with domain $D \subset \IR$ is a binning $Bin[i],I$, together with a count function $H: I \ra \IN_{0}$.
 \end{definition}
 
-\subsection{Histogram Operations}
+Given a dataset and a binning, we associate a histogram.
 
-\subsection{Merging}
+\begin{definition}
+  Given binning $Bin[i],I$ of $D \subset \IR$, and a dataset $X = (x_1,\dots,x_n)$ with values in
+  $D$, we define the histogram summary of $X$ as the histogram with binning $Bin[i],I$ and count
+  function
+  \begin{align*}
+    H_X(i) = \# \{ j \, | \, x_j \in Bin[i] \, \}.
+  \end{align*}
+  This means, that $H_X(i)$ counts the number of points of $X$ lying in $Bin[i]$.
+\end{definition}
 
-\subsection{Percentiles}
+Histograms can be freely merged without loosing information.
+
+\begin{definition}
+  Let $H_1, H_2$ be histograms for the same binning. The merged histogram $H_1 + H_2$ has count function:
+  \begin{align*}
+    (H_1+H_2)(i) = H_1(i) + H_2(i).
+  \end{align*}
+\end{definition}
+The merge operation is clearly associative and commutative.
+
+We can easily see that the histogram merge computes is compatible with merge (concatenation) of datasets:
+\begin{proposition}
+  Given binning $Bin[i],I$ of $D \subset \IR$, and two datasets $X = (x_1,\dots,x_n),Y=(y_1,...y_m)$ with
+  values in $D$. Let $Z=(x_1, \dots, x_n, y_1, \dots, y_m)$ be the merged dataset, then $H_Z = H_X + H_Y$.
+\end{proposition}
+
+\begin{proof}
+  We have
+  \begin{align*}
+    H_Z(i) &= \# \{ j \, | \, z_j \in Bin[i] \, \} =
+    \# \{ j \leq n \, | \, x_j = z_j \in Bin[i] \, \} +
+    \# \{ j > n \, | \, z_j = y_{j-n} \in Bin[i] \, \} \\
+    &= H_X(i) + H_Y(i). \qedhere
+  \end{align*}
+\end{proof}
+
+\subsubsection{Histogram Operations}
+
+Given a histogram we can try to approximate statistics (means, percentiles, etc.) of the original dataset.
+There are three strategies for doing so, that we have found valuable in practice:
+
+\begin{enumerate}
+\item Derive a probability distribution from a histogram (with uniform distribution inside the
+  bins), and apply the statistics to this distribution.
+\item Reconstruct the dataset by placing all points inside a bin at equally spaced distances.
+\item Reconstruct the dataset by placing all points inside a bin into the paretro midpoints.
+\end{enumerate}
+
+From a theoretical perspective strategy (1) is the most natural, and gives generally good results
+for data sampled from continues distribution (with density).
+Strategy (3) is the simplest and gives a clear a-priori error bounds independent of the distribution of $X$.
+Strategy (2) is mitigates between both approaches, and gives lower expected errors on a wide variety of
+datasets and while avoiding large relative errors in case of single sample bins.
+
+The current implementation of circllhist uses Strategy (3) to define sum, mean, stddev and moment estimation.
+For percentile calculations Strategy (2) is used.
+
+\begin{proposition}
+  Let $X=(x_1,\dots,x_n), n>0$ be a dataset with values in $\IR_{>0}$, let $H$ be the circllhist summary of $X$.
+  For each bin $Bin[i]$, let $c_i \in Bin[i]$ be the paretro midpoint. Let
+  \begin{align*}
+    count[H] = \sum_i H(i), \quad sum[H] = \sum_{i\in I} H(i) \cdot c_i, \qtext{and} mean[H] = sum[H] / count[H].
+  \end{align*}
+  then
+  \begin{enumerate}
+  \item $count[H] = count(X) = n$.
+  \item The relative error $|sum[H] - sum(X)| / sum(X)$ is smaller than $1/21 \approx 4.76\%$.
+  \item The relative error $|mean[H] - mean(X)| / mean(X)$ is smaller than $1/21 \approx 4.76\%$.
+  \end{enumerate}
+\end{proposition}
+
+\begin{proof}
+  The first claim follows immediately from the definition of $count[H]$, and $H(X)$.
+  For the second claim, we have
+  \begin{align*}
+    sum[H] - sum(X) = \sum_{i\in I} H(i) \cdot c_i - \sum_j x_j
+    = \sum_{i\in I} ( H(i) \cdot c_i - \sum_{j, x_j \in Bin[i]} x_j)
+    = \sum_{i\in I} \sum_{j, x_j \in Bin[i]} (c_i - x_j)
+  \end{align*}
+  And hence,
+  \begin{align*}
+    |sum[H] - sum(X)| \leq \sum_{i,j, x_j \in Bin[i]} |c_i - x_j| \leq \sum_{j} \frac{1}{21} |x_j| = \frac{1}{21} \cdot sum(X),
+  \end{align*}
+  where we used \ref{prop:21} in second step.
+  This shows the second claim.
+  For the third claim follows from the second by extending the fraction with $1/n$.
+\end{proof}
+
+\subsubsection{Quantiles}
+
+Quantiles can be approximated from histograms using any of the strategies outlined at the beginning
+of the section.  Strategy (1) has the downside, that for $q$ close to $1$, the $q$-quantile will always
+be near the high end of the largest bin with at least one sample in it. Often times this bin contains
+only a single sample. In this case the worst case error of the full bin size can be easily assumed.
+
+Strategy (3) has the downside, that expected errors for percentiles in the center of the distribution
+are much larger than needed. For densely populated bins the uniform distribution is often a good
+approximation, and can be used to estimate percentiles with high precision in typical cases.
+
+Strategy (2) offers a welcome middle route. Instead of placing all samples at the (paretro) midpoint (3),
+or smoothing them out with a uniform distribution (1), we place the samples at equally spaced position
+within each bin. In this way, densely populated bins will be approximated by a near uniform distribution
+and bins with only a single sample will be replaced by a single sample at the midpoint, reducing
+the worst-case error to half the bin size.
+
+\begin{definition}
+  Given a histogram $H$ on a binning $Bin[i], i \in I$ we define the fair resampling $X$ of $H$ as follows.
+  For each bin $Bin[i]$, with boundaries $a,b$ and count $H(i)=n$, we consider the points
+  \begin{align*}
+    x_{i,k} = a + \frac{k}{n+1} (b-a) \qtext{for} k=1,\dots,n
+  \end{align*}
+  and let $X = (x_{i,k} \,|\, i \in I, k = 1\dots,H(i))$. This is a dataset with $count[H]$ points.
+\end{definition}
+
+We now want to define the quantiles of a histogram as quantiles of the fair resampling of $H$.
+Before we can do so we first need to clarify the quantile definition for datasets.
+While there is only a single established quantile definition for probability distributions,
+there are multiple different quantile definitions found in the wild.
+A comprehensive list was compiled by Hyndman-Fan in 1996 \cite{HF1996}.
+For our discussion the following two variants are relevant:
+
+\begin{definition}
+  Given a dataset $X=(x_1,\dots,x_n), n>0$ of real numbers, and a number $q \in [0,1]$.
+  Let $x_{(1)} \leq x_{(2)} \leq \dots \leq x_{(n)}$ be the ordered version of $X$.
+  We define the minimal type-I q-quantile as
+  \begin{align*}
+    Q^1_0(X) = x_{(1)} \qtext{and}  Q^I_q(X) = x_{(\ceil{q \cdot n})} \qtext{for} q > 0.
+  \end{align*}
+  We define the minimal type-VII quantile is given by:
+  \begin{align*}
+    Q^{7}_q(X) = x_{(\floor{q \cdot (n - 1)} + 1)}.
+  \end{align*}
+  The interpolated type-VII quantile is given by:
+  \begin{align*}
+    Q^{7i}_q(X) = \gamma \cdot x_{(\floor{q \cdot (n - 1)} + 1)} + (1-\gamma) \cdot x_{(\ceil{q \cdot (n - 1)} + 1)},
+  \end{align*}
+  where the interpolation factor $\gamma \in [0,1]$ is calculated as $q(n-1) - \floor{q(n-1)}$.
+\end{definition}
+
+This definition is consistent with the numbering in \cite{HF1996}.
+
+* Type-1 quantiles are consistent with probability theory (empirical distribution function).
+
+* Type-1 quantiles allow to derive precise statements about the lower counts, e.g.
+
+> 95\% of all requests were served within 500ms IFF p95 < 500ms
+
+This is not true for Type-7 quantiles, which make statments about 95% of (n-1) requests.
+
+* Type-7 quantiles are most commonly found in software packages and used in dd-sketch, t-digest, hdr?!
+
 
 \section{Implementation}
+
+
+* Binning is fixed once and for all.
+* Bins are represented as exponent (8bit) + mantissa (8bit?).
+* Sparse encoding of histogram as list of bin+count pairs
+* Fast insertion tricks
 
 \section{Evaluation}
 
@@ -407,15 +563,15 @@ Recall, that the expected value of a uniformly distributed random variable $X \s
 \subsection{Calibration}
 
 \begin{figure}
-   \includegraphics[width=\textwidth]{evaluation/images/quantile_comparison.png}
-   \includegraphics[width=\textwidth]{evaluation/images/Two_Points_quantile_comparison.png}
-   \caption{Percentile functions on two-point dataset}
+   \includegraphics[width=\textwidth / 2]{evaluation/images/theoretical_quantile_comparison.png}
+   \includegraphics[width=\textwidth / 2]{evaluation/images/practical_quantile_comparison.png}
+   \caption{Comparison of quantile functions for the data set $[100,200,300,400]$ }
 \end{figure}
 
 \begin{figure}
   \centering
-  \input{evaluation/tables/Two_Points_quantiles.tex}
-  \caption{Percentile values of the two-point dataset $[10,100]$}
+  \input{evaluation/tables/quantile_comparison.tex}
+  \caption{Quantile values for the dataset $[100, 200, 300, 400]$}
 \end{figure}
 
 \clearpage
@@ -482,6 +638,47 @@ Simulated API Latency Data\\
   \input{evaluation/tables/Simulated_Latencies_accuracy.tex}
 \end{figure}
 
+\section{Conclusion}
+
+HDR Histograms, DDSketches and Circllhist are very similar approaches to the same problem of
+summarizing distributions in a way that allows arbitrary aggregations and a wide range of
+statistical operations like percentiles.
+
+- All three methods are based on logarithmic histograms
+
+- All three methods cover essentially unbounded data ranges
+
+- All three methods offer fast insertion times
+
+- All three methods offer a-priori bound on the relative error
+
+In comparison to the other methods:
+
+- circllhist is the oldest method, dating back to 2013 when it was first introduced in Circonus.
+
+- circllhist allows exact less-than counts at decimal floating point numbers
+
+- circllhist has the most performat C implementation available
+
+Prometheus histograms
+
+- require manual setting of thresholds and
+
+- only offer good percentile accuracy if the percentiles happen to lie near those thresholds.
+
+- non-sparse data structure makes using lot's of bins impractical
+
+T-digest
+
+- more complicated structure
+
+- good results on well behaved datasets
+
+- no a-priori error bounds on relative error after merge operations
+
+- we have seen cases where the relative error grows to > 100x
+
+
 \bibliographystyle{unsrt}
 \begin{thebibliography}{1}
 
@@ -501,9 +698,14 @@ G. Tene,
 \newblock \url{http://hdrhistogram.org/}, 2012
 
 \bibitem{libcircllhist}
-  Circonus,
+  Circonus.
   \newblock libcircllhist: An implementation of Circonus Log-Linear Histograms
   \newblock \url{https://github.com/circonus-labs/libcircllhist}, 2016
+
+\bibitem{HF1996}
+  Hyndman, R. J. and Fan, Y.
+  \newbloack Sample quantiles in statistical packages
+  \newblock American Statistician 50, 361–365. 10.2307/2684934, 1996
 
 \end{thebibliography}
 \end{document}
