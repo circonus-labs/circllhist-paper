@@ -1,10 +1,9 @@
 DOCKER = exec docker run --rm -i --user="$$(id -u):$$(id -g)" --net=none -v "$$PWD":/data "blang/latex:ubuntu"
 
-PREREQ = part1.tex
 TARGETS = circllhist.pdf
 ENV = LC_ALL=C
 
-all: fix $(PREREQ) $(TARGETS)
+all: fix $(TARGETS)
 
 %.pdf: %.tex
 	$(DOCKER) pdflatex -interaction=nonstopmode --shell-escape $<
