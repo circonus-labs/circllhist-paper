@@ -155,6 +155,9 @@ in section \ref{sec:eval}.
   \label{fig:llbins}
 \end{figure}
 
+In this section we develop an abstract theory of histograms to a degree that allows us to
+formally define circllhist as a linear refinement of a logarithmic histogram structure.
+
 The basic idea behind log linear histograms like the circllhist is illustrated in Figure \ref{fig:llbins}.
 We start with a logarithmic binning of the real axes, that has bins at the powers of ten.
 \begin{center}
@@ -175,9 +178,6 @@ Those are the bin boundaries for the circllhist data structure.
 When samples are inserted into the circllhist, we retain counts of the number of samples in each bin.
 This information allows us to approximate the original location of the inserted samples with a
 maximal relative error less than $5\%$.
-
-In this section we develop an abstract theory of histograms to a degree that allows us to
-formally define circllhist as a linear refinement of a logarithmic histogram structure.
 
 \subsection{Binnings}
 
@@ -390,7 +390,8 @@ Now we are in a position to define Log-Linear binnings.
   by the paretro midpoint
   $m = 2ab / (a + b)$.
 
-  The maximal relative distance to the paretro midpoint is is $(b - a) / (a + b)$
+  The maximal relative distance to the paretro midpoint is assumed at the interval boundaries
+  $rd(m,a) = rd(m,b) = (b - a) / (a + b)$.
 \end{proposition}
 
 \begin{proof}
@@ -508,18 +509,18 @@ There are three strategies for doing so, that we have found valuable in practice
 \begin{enumerate}
 \item Derive a probability distribution from a histogram (with uniform distribution inside the
   bins), and apply the statistics to this distribution.
-\item Reconstruct the dataset by placing all points inside a bin at equally spaced distances.
-\item Reconstruct the dataset by placing all points inside a bin into the paretro midpoints.
+\item Resample the dataset by placing all points inside a bin at equally spaced distances ({\it fair resampling}).
+\item Resample the dataset by placing all points inside a bin into the (paretro) midpoints ({\it midpoint resampling}).
 \end{enumerate}
 
-From a theoretical perspective strategy (1) is the most natural, and gives generally good results
-for data sampled from continues distribution (with density).
-Strategy (3) is the simplest and gives a clear a-priori error bounds independent of the distribution of $X$.
-Strategy (2) is mitigates between both approaches, and gives lower expected errors on a wide variety of
+From a theoretical perspective the probabilistic strategy is the most natural, and gives generally
+good results for data sampled from continues distribution (with density).  Midpoint resampling is
+the simplest and gives a low a-priori error bounds independent of the distribution of $X$.  Fair
+resampling mitigates between both approaches, and gives lower expected errors on a wide variety of
 datasets and while avoiding large relative errors in case of single sample bins.
 
-The current implementation of circllhist uses Strategy (3) to define sum, mean, stddev and moment estimation.
-For percentile calculations Strategy (2) is used.
+The current implementation of circllhist uses midpoint resampling to define sum, mean, stddev and
+moment estimation. For percentile calculations fair resampling is used.
 
 \begin{proposition}
   Let $X=(x_1,\dots,x_n), n>0$ be a dataset with values in $\IR_{>0}$, let $H$ be the circllhist summary of $X$.
@@ -555,19 +556,21 @@ For percentile calculations Strategy (2) is used.
 \subsubsection{Quantiles}
 
 Quantiles can be approximated from histograms using any of the strategies outlined at the beginning
-of the section.  Strategy (1) has the downside, that for $q$ close to $1$, the $q$-quantile will always
-be near the high end of the largest bin with at least one sample in it. Often times this bin contains
-only a single sample. In this case the worst case error of the full bin size can be easily assumed.
+of the last section.  The probabilistic strategy has the downside, that for $q$ close to $1$, the
+$q$-quantile will always be near the high end of the largest bin with at least one sample in
+it. Often times this bin contains only a single sample. In this case the worst case error of the
+full bin size can be easily assumed.
 
-Strategy (3) has the downside, that expected errors for percentiles in the center of the distribution
-are much larger than needed. For densely populated bins the uniform distribution is often a good
-approximation, and can be used to estimate percentiles with high precision in typical cases.
+Midpoint resampling has the downside, that expected errors for percentiles in the center of the
+distribution are much larger than needed. For densely populated bins the uniform distribution is
+often a good approximation, and can be used to estimate percentiles with high precision in typical
+cases.
 
-Strategy (2) offers a welcome middle route. Instead of placing all samples at the (paretro) midpoint (3),
-or smoothing them out with a uniform distribution (1), we place the samples at equally spaced position
-within each bin. In this way, densely populated bins will be approximated by a near uniform distribution
-and bins with only a single sample will be replaced by a single sample at the midpoint, reducing
-the worst-case error to half the bin size.
+Fair resampling offers a welcome middle route. Instead of placing all samples at the (paretro)
+midpoint, or smoothing them out with a uniform distribution, we place the samples at equally
+spaced position within each bin. In this way, densely populated bins will be approximated by a near
+uniform distribution and bins with only a single sample will be replaced by a single sample at the
+midpoint, reducing the worst-case error to half the bin size.
 
 \begin{definition}
   Given a histogram $H$ on a binning $Bin[i], i \in I$ we define the fair resampling $X$ of $H$ as follows.
@@ -575,7 +578,10 @@ the worst-case error to half the bin size.
   \begin{align*}
     x_{i,k} = a + \frac{k}{n+1} (b-a) \qtext{for} k=1,\dots,n
   \end{align*}
-  and let $X = (x_{i,k} \,|\, i \in I, k = 1\dots,H(i))$. This is a dataset with $count[H]$ points.
+  and let $\hat{X} = (x_{i,k} \,|\, i \in I, k = 1\dots,H(i))$. This is a dataset with $count[H]$ points.
+
+  Similarly, we define the midpoint resampling of $H$, with $H(i)$ samples at the midpoint of $Bin[i]$,
+  and the paretro midpoint resampling of $H$, with $H(i)$ samples at the paretro midpoint of $Bin[i]$.
 \end{definition}
 
 We now want to define the quantiles of a histogram as quantiles of the fair resampling of $H$.
@@ -637,34 +643,118 @@ Somewhat surprisingly, type-7 quantiles are more commonly found in software pack
 E.g. numpy \cite{numpy} computes interpolated type-7 quantiles by default.
 Also DDSketch \cite{dd} and t-digest \cite{tdigest} implement variants of type-7 quantiles.
 
-The circllhist implementation computes by default minimal type-1 quantiles on the fair resampling of
-the histogram.  It also comes with a minimal type-7 quantile implementation for better comparison
-with the alternative methods evaluated in this article.
+\begin{proposition}
+  Let $X$ a dataset with $n > 0$ positive values and $0 < q \leq 1$. Let $H$ be the circllhist summary of $X$.
+  We denote by $\hat{X}^f(H)$ the fair resampling, and by $\hat{X}^p(H)$ the paretro-midpoint resampling of $H$.
+  \begin{enumerate}
+  \item The relative error of the estimated type-1 or type-7 quantile is less than $1/21 \approx 4.76\%$ for
+    the paretro-resampling:
+    \begin{align*}
+      |Q^*_q(X) - Q^*_q(\hat{X}^p(H))| \leq \frac{1}{21} Q^*_q(X)
+    \end{align*}
+  \item The relative error of the estimated type-1 or type-7 quantile is less than $1/10 = 10\%$ for
+    the fair-resampling:
+    \begin{align*}
+      |Q^*_q(X) - Q^*_q(\hat{X}^f(H))| \leq \frac{1}{10} Q^*_q(X)
+    \end{align*}
+    Furthermore, in case the quantile value falls into a bin with a single sample (typical for
+    outliers), the maximal relative error is $5\%$.
+  \end{enumerate}
+\end{proposition}
 
-\section{Implementation}
+\begin{proof}
+  Let $r = \ceil{qn}$ for the type-1 and $r = \floor{q \cdot (n - 1)} + 1$ for the type-7 case.
+  In both cases we have $Q^*_q(X) = X_{(r)}$.
+  By construction of the paretro resampling, the $r$-th ordered value in the $Q^*_q(\hat{X}^p) = \hat{X}^p_{(r)}$,
+  is the paretro midpoint of the bin cotaining $X_{(r)}$.
+  This shows that $|Q^*_q(X) - Q^*_q(\hat{X}^p)| < 1/21 Q^*_q(X)$ by Proposition \ref{prop:21}.
+
+  Similarly for the fair resampling, the $r$-th ordered value in the $Q^*_q(\hat{X}^f) = \hat{X}^f_{(r)}$,
+  lies in the bin containing $X_{(r)}$.
+  Now we claim, that the maximal relative distance to any point in the same circllhist bin is $10\%$.
+  Indeed, the worst case relative difference is assumed for a bin $[10 \cdot 10^e, 11 \cdot 10^e)$ with
+  $x = 10 \cdot 10^e$ and $y \ra 11 \cdot 10^e$ so that $|x-y|/x \ra 1/10 = 10\%$.
+
+  In case that there is only a single sample in the bin $[a,b)$ containing $X_{(r)}$, the value
+  $\hat{X}^f_{(r)}$ will be at the (arithmetic) midpoint of the bin $m = a+\frac{1}{2}(b-a)$.
+  Hence, in this case $|X_{(r)} - \hat{X}^f_{(r)}| / X_{(r)} \leq \frac{1}{2} (b-a)/X_{(r)}$
+  This number is maximized for $X_{(r)} = a$, and $a = 10 \cdot 10^e$ in the circllhist binning.
+  In which case $\frac{1}{2} (b-a)/a =\frac{1}{2} \frac{1}{10} = 5\%$.
+\end{proof}
+
+\begin{example}
+  With the notation from the last proposition.  Let $X=(10,10,10, \dots, 10)$ of length $n$, then
+  the fair resampling is given by $\hat{X}^f = (10 + \frac{1}{n+1}, \dots, 10 + \frac{n}{n+1})$.
+  So $Q^*_1(\hat{X}^f) = 10 + \frac{n}{n+1}$ which converges to 11 for $n \ra \infty$.
+  On the other hand $Q^*_1(X) = max(X) = 10$. So the worst case error of 10\% is assumed
+  in the asymptotic case.
+\end{example}
+
+The circllhist implementation computes by default minimal type-1 quantiles on the fair resampling of
+the histogram.  This guarantees a worst-case relative error of 5\%, at the tails of the
+distribution, while providing high accuracy quantiles in the body of the distribution.  The
+theoretical worst case error of 10\% is only realized in cases were a large number of samples falls
+at the lower end of a bin as shown in the last example.
+It also comes with a type-7 quantile implementation for better comparison with the alternative
+methods evaluated in this article.
+
+\section{The Circllhist Implementation}
 
 The data-structure implemented in \cite{libcircllhist}, implements the a circllhist in the sense of
-definition \ref{dec:circllhist} with exponent range limited to $-128 \leq e < 127$.
+Definition \ref{def:circllhist} with exponent range limited to $-128 \leq e < 127$.
 In this way, both exponent $e$ and mantissa $d$ can be represented by 8-bit integers.
+The counts $H(i)$ are represented 64 bit integers.
 
-A circllhist is internally represented as a list of (bin, count) pairs.
-The counts are 64 bit integers.
-If a bin has a count of 0, then it can be skipped in the representation.
-The serialized form of the histogram will only contain bins with non-zero counts.
+The largest representable number of the circllhist is $99 \cdot 10^{127}$.
+This number is larger than the age of the universe measured in nano-seconds (13.8 billion years)
+The smallest representable positive number is $10 \cdot 10^{-128}$.
+This number is smaller than the Plank time measured in years ($5.39 \cdot 10^{-44}$ s).
+We have found this value range to be sufficient for all practical purposes.
 
-The theoretical maximum of used bins is $2 \times 236 \times 90 + 1 = 46081$
-(for sign, exponent, mantissa and zero bucket).
-In practice we have not seen a histogram with more than 300 allocated bins.
+Within that range the circllhist bins have a relative size of 1\%-10\% of the values contained in
+them. Hence, the original values can be reconstructed with a relative error of no more than 10\%.
+If the reconstructed values are placed at the paretro midpoint of the bin, the relative reconstruction
+error can be reduced to 4.76\% (see Proposition \ref{prop:21}).
 
-A number of performance optimizations are implemented.
+The accuracy of approximations of statistical quantities like sums, means and quantiles is commonly
+much better than 10\%, since the individual reconstruction errors even out across the dataset.
+In the case of quantiles, we will see this in the evaluation below.
 
-\begin{enumerate}
-\item A number of bin,count pairs can be pre-allocated at creation of the structure.
-\item Powers of ten have been statically pre-computed.
-\item Integer values with a given decimal exponent can be directly inserted (e.g. ns values) without
-  using floating point arithmetic cf. Proposition \ref{prop:rec}.
-\end{enumerate}
+The counts of samples above or below a threshold, can be reconstructed accurately for threshold
+that fall onto bin boundaries. In the case of the circllhist, those lie at decimal floating point
+numbers with two digits of precision (e.g. 0.23, 1.5, 110). In practice, those are the numbers
+that humans choose, if they have to come up with thresholds.
 
+A circllhist is internally represented as a sparse list of (bin, count) pairs.  If a bin has a count
+of 0, then it can be skipped in the representation.  The serialized form of the histogram will only
+contain bins with non-zero counts.  The theoretical maximum of used bins is $2 \times 256 \times 90
++ 1 = 46081$ (for sign, exponent, mantissa and zero bucket) which makes for a maximal size of 3.6Mb.
+In practice we have never seen histogram data structures getting close to this size.  Even in
+extreme cases, when capturing billions of samples from a nano-second to minute scale the number of
+allocated bins never exceeded 1000, and the total size stays below 80kb.
+Typical histograms in our system, have anywhere from 0-150 allocated bins and occupy <10kb
+before compression.
+
+The C implementation of libcircllhist includes a number of performance optimizations.  It comes with
+an optional index structure, that avoids iteration over bins when retrieving and inserting data,
+Integer values with a given decimal exponent can be directly inserted (e.g. ns values) without using
+floating point arithmetic (cf. Proposition \ref{prop:rec}).
+It uses static branch annotations (GCC) to aid CPU branch predictions.
+Moreover the quantile algorithm allows multiple quantiles to be computed with a single pass through the bucket list.
+With these optimizations we can get raw insertion latencies down to $\sim 10ns$ for integer, and $\sim 80ns$ for double values.\footnote{
+  These latencies were measured in a tight C loop with the provided \texttt{test/histogram\_perf.c} script, on a 2Ghz Intel Xeon CPU.
+  The evaluation in section \ref{sec:eval} is Python based and uses different iteration counts and data.
+}
+
+Implemetations of the circllhist are available for a variety of languages including:
+\begin{itemize}
+\item C/C++ \url{https://github.com/circonus-labs/libcircllhist}
+\item Python \url{https://github.com/circonus-labs/libcircllhist/tree/master/src/python}
+\item Go \url{https://github.com/circonus-labs/circonusllhist}
+\item Lua \url{https://github.com/circonus-labs/libcircllhist/tree/master/src/lua}
+\item JavaScript \url{https://github.com/circonus-labs/circllhist.js}
+\item C\# .NET \url{https://github.com/circonus-labs/netcircllhist}.
+\end{itemize}
 
 \section{Evaluation}
 \label{sec:eval}
