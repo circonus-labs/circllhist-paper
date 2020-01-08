@@ -345,8 +345,7 @@ Now we are in a position to define log-linear binnings.
 \begin{proposition} \label{prop:rec}
   The binning map of the circllhist can be recursively computed with the following algorithm:
 
-  \begin{cetner}
-    \begin{BVerbatim}[fontfamily=tt]
+\begin{BVerbatim}[fontfamily=tt]
   function bin(x)
     if x == 0:
       return (0,0,0)
@@ -360,10 +359,9 @@ Now we are in a position to define log-linear binnings.
     else: # 10 <= x < 100:
       return (+1, 1, floor(x))
   end
-    \end{BVerbatim}
-  \end{cetner}
+\end{BVerbatim}
 
-  In particular, the circllhist binning map can be computed without use of the logarithm function.
+In particular, the circllhist binning map can be computed without use of the logarithm function.
 \end{proposition}
 
 \begin{proof}
@@ -799,9 +797,10 @@ The t-digest is the only evaluated method, that is not internally using a histog
 Instead the inserted data is aggregated into clusters of adaptive size.  The sizes are chosen in
 such a way that, high resolution data is available at the tails of the distribution.  We use the
 original Java implementation\footnote{\url{github.com/tdunning/t-digest}} called from python
-using pyjnius\footnote{\url{https://github.com/kivy/pyjnius}. The digests are configured with a
+using pyjnius\footnote{\url{https://github.com/kivy/pyjnius}}. The digests are configured with a
 compression parameter of 100, which is described to be a ``common value for normal uses'' in
 the source code.
+
 
 \subsection{Datasets}
 
@@ -967,13 +966,38 @@ statistical operations like percentiles.
 
 - All three methods offer a-priori bound on the relative error
 
+As such, it should not surprise that performance and accuracy of those methods is comparable.
+Differences come mainly down to configuration choices and optimizations of the implementation.
+
 In comparison to the other methods:
 
 - circllhist is the oldest method, dating back to 2011 when it was first introduced in Circonus.
 
-- circllhist allows exact less-than counts at decimal floating point numbers
+- circllhist mandates all bin boundaries, guaranteeing compatibility between histograms from different sources.
 
-- circllhist has the most performat C implementation available
+- circllhist allows exact less-than counts at decimal floating point numbers, which are typically chosen by humans.
+
+- circllhist has the most optimized implementation available (C).
+
+DD Sketches:
+
+- Are actually histograms, despite their somewhat misleading name.
+
+- simpler than circllhists, since they only have a logarithmic not a linear part.
+
+- slightly better theoretical accuracy.
+
+- Not suited for embedded applications since floating point arithmetic is essential.
+
+T-digest
+
+- not a histogram, more complicated to reason about
+
+- very good results on well behaved datasets
+
+- no a-priori error bounds on relative error after merge operations
+
+- we have seen cases where the relative error grows to > 100x on simpluated datasets
 
 Prometheus histograms
 
@@ -982,17 +1006,6 @@ Prometheus histograms
 - only offer good percentile accuracy if the percentiles happen to lie near those thresholds.
 
 - non-sparse data structure makes using lot's of bins impractical
-
-T-digest
-
-- more complicated structure
-
-- good results on well behaved datasets
-
-- no a-priori error bounds on relative error after merge operations
-
-- we have seen cases where the relative error grows to > 100x
-
 
 \bibliographystyle{unsrt}
 \begin{thebibliography}{1}
