@@ -158,7 +158,7 @@ in section \ref{sec:eval}.
 In this section we develop an abstract theory of histograms to a degree that allows us to
 formally define circllhist as a linear refinement of a logarithmic histogram structure.
 
-The basic idea behind log linear histograms like the circllhist is illustrated in Figure \ref{fig:llbins}.
+The basic idea behind log-linear histograms like the circllhist is illustrated in Figure \ref{fig:llbins}.
 We start with a logarithmic binning of the real axes, that has bins at the powers of ten.
 \begin{center}
   \begin{BVerbatim}
@@ -211,7 +211,7 @@ maximal relative error less than $5\%$.
     \end{align*}
 \end{example}
 
-\begin{example}
+\begin{example}\label{example:log}
   The logarithmic binning with basis $b > 0$ of $\IR_{>0}$ is given by $I=\IZ$, with
   \begin{align*}
     Bin^{Log}_b[i] = [b^i, b^{i+1})
@@ -271,9 +271,9 @@ maximal relative error less than $5\%$.
   Hence it suffices to show that $[j/n, (j+1)/n)$ cover $[0,1)$ for $j=0,\dots,n$ which is evident.
 \end{proof}
 
-Now we are in a position to define Log-Linear binnings.
+Now we are in a position to define log-linear binnings.
 
-\begin{definition}
+\begin{definition}\label{def:ll}
   The base $b$, length $n$ log-liner binning of $\IR_{>0}$ is the length-n linear refinement of the base-b Logarithmic binning of $\IR_{>0}$.
 \end{definition}
 
@@ -446,7 +446,7 @@ Recall, that the expected value of a uniformly distributed random variable $X \s
 
 Once we have established our binnings. Histograms are easy to define.
 
-\begin{definition}
+\begin{definition}\label{def:hist}
   A histogram with domain $D \subset \IR$ is a binning $Bin[i],I$, together with a count function $H: I \ra \IN_{0}$.
 \end{definition}
 
@@ -501,7 +501,7 @@ We can easily see that the histogram merge computes is compatible with merge (co
   For logarithmic histograms we get exact counts at the powers of the base $b^e, e\in \IZ$.
 \end{remark}
 
-\subsubsection{Histogram Operations}
+\subsection{Histogram Operations}
 
 Given a histogram we can try to approximate statistics (means, percentiles, etc.) of the original dataset.
 There are three strategies for doing so, that we have found valuable in practice:
@@ -553,7 +553,7 @@ moment estimation. For percentile calculations fair resampling is used.
   For the third claim follows from the second by extending the fraction with $1/n$.
 \end{proof}
 
-\subsubsection{Quantiles}
+\subsection{Quantiles}
 
 Quantiles can be approximated from histograms using any of the strategies outlined at the beginning
 of the last section.  The probabilistic strategy has the downside, that for $q$ close to $1$, the
@@ -703,7 +703,7 @@ methods evaluated in this article.
 The data-structure implemented in \cite{libcircllhist}, implements the a circllhist in the sense of
 Definition \ref{def:circllhist} with exponent range limited to $-128 \leq e < 127$.
 In this way, both exponent $e$ and mantissa $d$ can be represented by 8-bit integers.
-The counts $H(i)$ are represented 64 bit integers.
+The counts $H(i)$ are represented as 64-bit unsigned integers.
 
 The largest representable number of the circllhist is $99 \cdot 10^{127}$.
 This number is larger than the age of the universe measured in nano-seconds (13.8 billion years)
@@ -717,7 +717,7 @@ If the reconstructed values are placed at the paretro midpoint of the bin, the r
 error can be reduced to 4.76\% (see Proposition \ref{prop:21}).
 
 The accuracy of approximations of statistical quantities like sums, means and quantiles is commonly
-much better than 10\%, since the individual reconstruction errors even out across the dataset.
+much better than 10\%, since the individual reconstruction errors cancel across the dataset.
 In the case of quantiles, we will see this in the evaluation below.
 
 The counts of samples above or below a threshold, can be reconstructed accurately for threshold
@@ -730,68 +730,112 @@ of 0, then it can be skipped in the representation.  The serialized form of the 
 contain bins with non-zero counts.  The theoretical maximum of used bins is $2 \times 256 \times 90
 + 1 = 46081$ (for sign, exponent, mantissa and zero bucket) which makes for a maximal size of 3.6Mb.
 In practice we have never seen histogram data structures getting close to this size.  Even in
-extreme cases, when capturing billions of samples from a nano-second to minute scale the number of
-allocated bins never exceeded 1000, and the total size stays below 80kb.
+extreme cases, when capturing billions of samples from a nano-second to minute scale, the number of
+allocated bins never exceeded 1000, and the total size stayed below 80kb.
 Typical histograms in our system, have anywhere from 0-150 allocated bins and occupy <10kb
 before compression.
 
 The C implementation of libcircllhist includes a number of performance optimizations.  It comes with
 an optional index structure, that avoids iteration over bins when retrieving and inserting data,
 Integer values with a given decimal exponent can be directly inserted (e.g. ns values) without using
-floating point arithmetic (cf. Proposition \ref{prop:rec}).
-It uses static branch annotations (GCC) to aid CPU branch predictions.
-Moreover the quantile algorithm allows multiple quantiles to be computed with a single pass through the bucket list.
-With these optimizations we can get raw insertion latencies down to $\sim 10ns$ for integer, and $\sim 80ns$ for double values.\footnote{
-  These latencies were measured in a tight C loop with the provided \texttt{test/histogram\_perf.c} script, on a 2Ghz Intel Xeon CPU.
-  The evaluation in section \ref{sec:eval} is Python based and uses different iteration counts and data.
-}
+floating point arithmetic (cf. Proposition \ref{prop:rec}).  It uses static branch annotations to
+aid CPU branch predictions.  With these optimizations we can get raw insertion latencies down to
+$\sim 10ns$ for integer, and $\sim 80ns$ for double values.\footnote{ These latencies were measured
+in a tight C loop with the provided \texttt{test/histogram\_perf.c} script, on a 2Ghz Intel Xeon
+CPU.  The evaluation in section \ref{sec:eval} is Python based and uses different iteration counts
+and data. }
 
-Implemetations of the circllhist are available for a variety of languages including:
+Implementations of the circllhist are available for a variety of languages including:
 \begin{itemize}
-\item C/C++ \url{https://github.com/circonus-labs/libcircllhist}
-\item Python \url{https://github.com/circonus-labs/libcircllhist/tree/master/src/python}
-\item Go \url{https://github.com/circonus-labs/circonusllhist}
-\item Lua \url{https://github.com/circonus-labs/libcircllhist/tree/master/src/lua}
-\item JavaScript \url{https://github.com/circonus-labs/circllhist.js}
-\item C\# .NET \url{https://github.com/circonus-labs/netcircllhist}.
+\item C/C++ -- \url{https://github.com/circonus-labs/libcircllhist}
+\item Python -- \url{https://github.com/circonus-labs/libcircllhist/tree/master/src/python}
+\item Go -- \url{https://github.com/circonus-labs/circonusllhist}
+\item Lua -- \url{https://github.com/circonus-labs/libcircllhist/tree/master/src/lua}
+\item JavaScript -- \url{https://github.com/circonus-labs/circllhist.js}
+\item C\# .NET -- \url{https://github.com/circonus-labs/netcircllhist}.
 \end{itemize}
 
 \section{Evaluation}
 \label{sec:eval}
 
-In this section compare the following quantile sketches:
+\subsection{Methods}
+
+In this section we compare the circllhist implementation to the following alternative methods:
 
 \begin{itemize}
-\item[exact]
-  Exact quantile estimation based on numpy arrays \cite{numpy}.
-\item[prom]
-  Quantile estimation based on Prometheus Histograms \cite{prom}.
-  We use a hand-written Python port of the original quantile functions written in go.
-\item[hdr]
-  The High Dynamic Range Histogram data-structure was introduced in \cite{hdr}.
-  We use the Python implementation published at \url{https://github.com/HdrHistogram/HdrHistogram_py}.
-\item[t-digest]
-  The t-digest data structure was introduced in \cite{tdigest}.
-  We use Java implementation by the original authors available at \url{github.com/tdunning/t-digest}.
-\item[dd]
-  The ``Distributed Distribution Sketch'' is a histogram datastructure that was introduced in \cite{dd}.
-  We use the Python implementation published at \url{github.com/DataDog/sketches-py}.
-\item[circllhist]
-  The Circonus Log-Linear Histogram datastructure described in this document.
-  We use the Python/C implementation published at \url{github.com/circonus-labs/libcircllhist}.
+\item[exact] Exact quantile computation based on numpy arrays \cite{numpy}.
+\item[prom] Quantile estimation based on Prometheus Histograms \cite{prom}.
+\item[hdr] The HDR Hisotgram data-structure introduced in \cite{hdr}.
+\item[dd] The DDSketch data-structure introduced in \cite{dd}.
+\item[t-digest] The t-digest data structure introduced in \cite{tdigest}.
 \end{itemize}
 
-The Prometheus monitoring system makes use of a very simple quantile sketch that consists of a list
-of ``less than'' metrics, which count how many samples were inserted that are below manually configured
-threshold values.
-Prometheus Histograms are included here for their wide use in practice.
-The method itself is not really comparable, since it the results are highly dependent on the number
-and location of the chosen thresholds.
-We use the recommended number of around 10 threshold values, at locations which cover the whole
-data range with emphasis on the likely quantile locations.
+The Prometheus monitoring system provides a histogram data-type that consists of a list of ``less
+than'' metrics, which count how many samples were inserted that are below manually configured
+threshold values. This datum of a Prometheus histogram is equivalent to a histogram in the sense of
+Definition \ref{def:hist}, with bin-boundaries at the configured thresholds.  Prometheus Histograms
+are included here for their wide use in practice.  The method itself is not really comparable, since
+it the results are highly dependent on the number and location of the chosen thresholds. For the
+evaluation, we use the recommended number of around 10 threshold values, at locations which cover
+the whole data range with emphasis on the likely quantile locations.  We use a hand-written Python
+port of the original quantile functions written in go.
 
-The HDR Histogram method was configured to resemble the circllhist method, with a range of
-$10^{-128} .. 10^{128}$ and a accuracy of three significant digits.
+The HDR Histogram data structure is a log-linear Histogram in the sense of Definition \ref{def:ll}.
+It uses a base of 2, and a configurable range and precision.  It's notable that the exposed API
+let's the user specify decimal precision.  The internal precision is then chosen in such a way that
+the resulting base-2 bins are smaller than the specified base-10 accuracy.  Using base-2 arithmetic
+has the advantage of allowing bit-wise manipulation of floating points numbers to determine the bin
+location. For our evaluation used the Python
+implementation\footnote{\url{https://github.com/HdrHistogram/HdrHistogram_py}}, and configured the
+HDR Histograms to cover the same range of the circclhist ($10^{-128}\dots10^{+127}$) with two digits
+of decimal precision.
+
+The DDSketch is a histogram for the logarithmic binning introduced in Example \ref{example:log}.
+It uses allows real numbers as basis, which allow to configure the desired precision.
+We use the Python implementation\footnote{\url{github.com/DataDog/sketches-py}}, with the default
+precision of 1\% (corresponding to $b=101/99=1.\bar{02}$).
+
+The t-digest is the only evaluated method, that is not internally using a histogram data structure.
+Instead the inserted data is aggregated into clusters of adaptive size.  The sizes are chosen in
+such a way that, high resolution data is available at the tails of the distribution.  We use the
+original Java implementation\footnote{\url{github.com/tdunning/t-digest}} called from python
+using pyjnius\footnote{\url{https://github.com/kivy/pyjnius}. The digests are configured with a
+compression parameter of 100, which is described to be a ``common value for normal uses'' in
+the source code.
+
+\subsection{Datasets}
+
+\begin{figure}
+   \includegraphics[width=\textwidth]{evaluation/images/Uniform_Distribution_distribution_percentiles.png}
+   \includegraphics[width=\textwidth]{evaluation/images/API_Latencies_distribution_percentiles.png}
+   \includegraphics[width=\textwidth]{evaluation/images/Simulated_Latencies_distribution_percentiles.png}
+   \caption{Datasets}
+   \label{fig:ds}
+\end{figure}
+
+We measure timing and accuracy on the following three datasets.
+
+\begin{itemize}
+\item Uniform Distribution. Random samples are generated for a uniform distribution on $[10,100]$.
+  These are split in to 1000 batches each containing 100 values, for a total of 1.000.000 samples.
+\item API Latencies.  This dataset contains data collected at one of our internal APIs
+  collected in 10 minute batches over the course of 6 weeks.
+  It consists of a total of 4.65 million samples in 6048 batches.
+\item Simulated Latencies.
+  We generate a total of 1000 batches of randomized sizes with randomized data.
+  The size of the batches follows a geometric distribution.
+  The samples themselves are generated as a randomly displaced and scaled paretro distribution.
+  The dataset contains a total of close to 1.000.000 samples.
+\end{itemize}
+
+Figure \ref{fig:ds} contains a histogram visualization of the total distribution of these datasets.
+
+
+
+The considered tasks are (1) data insertion (2) merging of aggregates and (3) quantile approximation.
+
+
+We use the Python/C implementation published at \url{github.com/circonus-labs/libcircllhist}.
 
 The t-digest
 
@@ -817,13 +861,42 @@ The t-digest
 \end{figure}
 
 \clearpage
-\subsection{Datasets}
+\subsection{Size}
+
+\begin{figure*}[t!]
+  \includegraphics[width=\textwidth]{evaluation/images/all_size.png}
+  \caption{Size Comparison}
+\end{figure*}
 
 \begin{figure}
-   \includegraphics[width=\textwidth]{evaluation/images/Uniform_Distribution_distribution_percentiles.png}
-   \includegraphics[width=\textwidth]{evaluation/images/API_Latencies_distribution_percentiles.png}
-   \includegraphics[width=\textwidth]{evaluation/images/Simulated_Latencies_distribution_percentiles.png}
-   \caption{Datasets}
+  \centering
+  \input{evaluation/tables/all_size.tex}
+  \caption{Aggregation sizes in kb}
+\end{figure}
+
+* HDR Hisotgram allocates all bins in memory. We show the serialize of the serialization, which skips empty bins.
+
+The t-digest
+
+* Contenders and Parameters.
+
+* Re-running evaluation using docker and Jupyter Notebook.
+
+
+\clearpage
+\subsection{Calibration}
+
+\begin{figure}
+   \includegraphics[width=\textwidth / 2]{evaluation/images/theoretical_quantile_comparison.png}
+   \includegraphics[width=\textwidth / 2]{evaluation/images/practical_quantile_comparison.png}
+   \caption{Comparison of quantile functions for the data set $[100,200,300,400]$ }
+   \label{fig:qc}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \input{evaluation/tables/quantile_comparison.tex}
+  \caption{Quantile values for the dataset $[100, 200, 300, 400]$}
 \end{figure}
 
 \clearpage
