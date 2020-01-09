@@ -108,7 +108,7 @@ or lower than a given threshold. Furthermore it's beneficial if (4) information 
 distribution is retained, so that general probabilistic modeling techniques can be applied.
 
 Traditionally monitoring tools, either store raw data on which calculations are performed [cf. log analysis tools],
-compute latency quantiles on each host separately and store them as numeric time series [statsd].
+or compute latency quantiles on each host separately and store them as numeric time series [statsd].
 Both approaches have obvious drawbacks.
 The high volume of data makes raw data storage uneconomical for sources like request latencies,
 and impractical for high volume sources like function-call or syscall latencies.
