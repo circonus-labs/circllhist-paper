@@ -122,7 +122,7 @@ However, no academic paper was published until now.
 This document describes the circllhist data-structure and compares it to other methods
 that have been adopted by other monitoring vendors since then.
 
-\section{Related Work}
+\section{Related Work} \label{sec:rw}
 
 There is also a fair bit of work in the academic literature on the problem of efficiently
 calculating aggregated quantiles since 1980. This runs under the name ``mergable summaries'' and
@@ -552,6 +552,7 @@ moment estimation. For percentile calculations fair resampling is used.
 \end{proof}
 
 \subsection{Quantiles}
+\label{sec:quantiles}
 
 Quantiles can be approximated from histograms using any of the strategies outlined at the beginning
 of the last section.  The probabilistic strategy has the downside, that for $q$ close to $1$, the
@@ -756,16 +757,39 @@ Implementations of the circllhist are available for a variety of languages inclu
 \section{Evaluation}
 \label{sec:eval}
 
+In this section we present a numerical comparison between the quantile aggregation methods described
+in Section \ref{sec:rw}. We will evaluate the precision and performance of quantile calculations,
+performance of insertion and merge operations, as well as the size of the resulting data-structures.
+
+The evaluation proceeds in three phases: insertion, merge and analysis. In the insertion phase, raw
+data is inserted the data-structures. Each data-set is split into a number of batches. We create
+individual data-structures for each batch. In the merge phase, data-structures created for each
+batch are merged into a single one.  In the analysis phase, we perform quantile calculations on the
+merged data-structure.
+
+The evaluation was performed using a set of Jupyter notebooks, which are available at
+\begin{center}
+  \url{https://github.com/circonus-labs/circllhist-paper}.
+\end{center}
+This repository contains datasets and source code used to generate the exact tables and graphics we
+are using this document.  We also provide docker images and instructions, should aid the
+reproduction of the evaluation results on other machines.  We are open to extension and improvements
+to the evaluation setup. Please contact us via email or open a pull request, if you identified flaws
+or found improvements.
+
+
+
 \subsection{Methods}
 
-In this section we compare the circllhist implementation to the following alternative methods:
+The following data-aggregation methods are considered for evaluation.
 
 \begin{itemize}
 \item[exact] Exact quantile computation based on numpy arrays \cite{numpy}.
 \item[prom] Quantile estimation based on Prometheus Histograms \cite{prom}.
 \item[hdr] The HDR Hisotgram data-structure introduced in \cite{hdr}.
 \item[dd] The DDSketch data-structure introduced in \cite{dd}.
-\item[t-digest] The t-digest data structure introduced in \cite{tdigest}.
+\item[t-digest] The t-digest data-structure introduced in \cite{tdigest}.
+\item[circllhist] The circclhist data-structure described in this document.
 \end{itemize}
 
 The Prometheus monitoring system provides a histogram data-type that consists of a list of ``less
@@ -774,9 +798,9 @@ threshold values. This datum of a Prometheus histogram is equivalent to a histog
 Definition \ref{def:hist}, with bin-boundaries at the configured thresholds.  Prometheus Histograms
 are included here for their wide use in practice.  The method itself is not really comparable, since
 it the results are highly dependent on the number and location of the chosen thresholds. For the
-evaluation, we use the recommended number of around 10 threshold values, at locations which cover
-the whole data range with emphasis on the likely quantile locations.  We use a hand-written Python
-port of the original quantile functions written in go.
+evaluation, we follow the recommended practice of using a total of around ten bins (12) at locations
+which cover the whole data range with emphasis on the likely quantile locations.  We use a
+hand-written Python translation of the original quantile functions written in go.
 
 The HDR Histogram data structure is a log-linear Histogram in the sense of Definition \ref{def:ll}.
 It uses a base of 2, and a configurable range and precision.  It's notable that the exposed API
@@ -791,7 +815,7 @@ of decimal precision.
 The DDSketch is a histogram for the logarithmic binning introduced in Example \ref{example:log}.
 It uses allows real numbers as basis, which allow to configure the desired precision.
 We use the Python implementation\footnote{\url{github.com/DataDog/sketches-py}}, with the default
-precision of 1\% (corresponding to $b=101/99=1.\bar{02}$).
+precision of 1\% (corresponding to $b=101/99$).
 
 The t-digest is the only evaluated method, that is not internally using a histogram data structure.
 Instead the inserted data is aggregated into clusters of adaptive size.  The sizes are chosen in
@@ -801,116 +825,73 @@ using pyjnius\footnote{\url{https://github.com/kivy/pyjnius}}. The digests are c
 compression parameter of 100, which is described to be a ``common value for normal uses'' in
 the source code.
 
+For the circllhist we used the Python binding\footnote{\url{github.com/circonus-labs/libcircllhist}}.
+It does not allow any configuration of bin sizes or accuracy.
 
 \subsection{Datasets}
 
 \begin{figure}
-   \includegraphics[width=\textwidth]{evaluation/images/Uniform_Distribution_distribution_percentiles.png}
-   \includegraphics[width=\textwidth]{evaluation/images/API_Latencies_distribution_percentiles.png}
-   \includegraphics[width=\textwidth]{evaluation/images/Simulated_Latencies_distribution_percentiles.png}
-   \caption{Datasets}
+   % \includegraphics[width=\textwidth/3]{evaluation/images/Uniform_Distribution_distribution_percentiles.png}
+   \includegraphics[width=\textwidth/2]{evaluation/images/API_Latencies_distribution_percentiles.png}
+   \includegraphics[width=\textwidth/2]{evaluation/images/Simulated_Latencies_distribution_percentiles.png}
+   \caption{Total Distribution of the 'API Latency' and 'Simulated Latencies' Datasets, with marked Quantiles.}
    \label{fig:ds}
 \end{figure}
 
-We measure timing and accuracy on the following three datasets.
+For the evaluation we choose three different datasets, each containing over 1 million samples, split
+into more than 1000 batches.
 
 \begin{itemize}
 \item Uniform Distribution. Random samples are generated for a uniform distribution on $[10,100]$.
   These are split in to 1000 batches each containing 100 values, for a total of 1.000.000 samples.
 \item API Latencies.  This dataset contains data collected at one of our internal APIs
   collected in 10 minute batches over the course of 6 weeks.
+  The data is spread between 0.29 and 11.000 (ms).
+  There is a cutoff value around 11sec, that was caused by timeout logic getting triggered.
+  This results in the higher quantile values being close together.
   It consists of a total of 4.65 million samples in 6048 batches.
 \item Simulated Latencies.
   We generate a total of 1000 batches of randomized sizes with randomized data.
   The size of the batches follows a geometric distribution.
   The samples themselves are generated as a randomly displaced and scaled paretro distribution.
+  The data is spread between on between $10^{-5}$ and $10^{10}$ with an extremely long tail.
   The dataset contains a total of close to 1.000.000 samples.
 \end{itemize}
 
 Figure \ref{fig:ds} contains a histogram visualization of the total distribution of these datasets.
 
-
-
-The considered tasks are (1) data insertion (2) merging of aggregates and (3) quantile approximation.
-
-
-We use the Python/C implementation published at \url{github.com/circonus-labs/libcircllhist}.
-
-The t-digest
-
-* Contenders and Parameters.
-
-* Re-running evaluation using docker and Jupyter Notebook.
-
-
-\clearpage
-\subsection{Calibration}
-
-\begin{figure}
-   \includegraphics[width=\textwidth / 2]{evaluation/images/theoretical_quantile_comparison.png}
-   \includegraphics[width=\textwidth / 2]{evaluation/images/practical_quantile_comparison.png}
-   \caption{Comparison of quantile functions for the data set $[100,200,300,400]$ }
-   \label{fig:qc}
-\end{figure}
-
-\begin{figure}
-  \centering
-  \input{evaluation/tables/quantile_comparison.tex}
-  \caption{Quantile values for the dataset $[100, 200, 300, 400]$}
-\end{figure}
-
-\clearpage
 \subsection{Size}
 
-\begin{figure*}[t!]
+\begin{figure*}
   \includegraphics[width=\textwidth]{evaluation/images/all_size.png}
   \caption{Size Comparison}
+  \label{fig:size}
 \end{figure*}
 
 \begin{figure}
   \centering
   \input{evaluation/tables/all_size.tex}
-  \caption{Aggregation sizes in kb}
+  \caption{Aggregation sizes in bytes}
+  \label{fig:tsize}
 \end{figure}
 
-* HDR Hisotgram allocates all bins in memory. We show the serialize of the serialization, which skips empty bins.
+Figures \ref{fig:size} and \ref{fig:tsize} show the sizes of the data structures after all samples
+from the respective datasets have been inserted and the data structures have been merged.
 
-The t-digest
+With our choice of parameters, the size of the HDR Histogram, DDSketch, circllhist follow each other
+quite closely. Note that the size increases with the spread of the data, not with the size of the
+inserted samples.
 
-* Contenders and Parameters.
+It's important to note, that we compare the sizes of the serialized versions of the data-structures,
+as they would be consumed on disk or on the network, not the in-memory size (as this is harder to
+estimate). The memory footprint might be larger than the serialized size. This is particularly true
+for the HDR Histogram with pre-allocates all bins in memory, and skips empty bins for the
+serialization.
 
-* Re-running evaluation using docker and Jupyter Notebook.
+The Prometheus histogram was configured with 12 bins, and hence consumes exactly 96 bytes.
 
-
-\clearpage
-\subsection{Calibration}
-
-\begin{figure}
-   \includegraphics[width=\textwidth / 2]{evaluation/images/theoretical_quantile_comparison.png}
-   \includegraphics[width=\textwidth / 2]{evaluation/images/practical_quantile_comparison.png}
-   \caption{Comparison of quantile functions for the data set $[100,200,300,400]$ }
-   \label{fig:qc}
-\end{figure}
-
-\begin{figure}
-  \centering
-  \input{evaluation/tables/quantile_comparison.tex}
-  \caption{Quantile values for the dataset $[100, 200, 300, 400]$}
-\end{figure}
-
-\clearpage
-\subsection{Size}
-
-\begin{figure*}[t!]
-  \includegraphics[width=\textwidth]{evaluation/images/all_size.png}
-  \caption{Size Comparison}
-\end{figure*}
-
-\begin{figure}
-  \centering
-  \input{evaluation/tables/all_size.tex}
-  \caption{Aggregation sizes in kb}
-\end{figure}
+The size of the t-digest is relatively constant across all three data-sets, which reflects the fact
+that the number of clusters is kept constant when additional data is inserted.
 
 \clearpage
 \subsection{Performance}
@@ -935,6 +916,24 @@ Simulated API Latency Data\\
 
 \clearpage
 \subsection{Accuracy}
+
+As we have seen in section \ref{sec:quantiles}, there are a number of different quantile definitions
+circulating in the wild. Before we can compare the accuracy, we have to make sure we are comparing
+the same numbers.
+
+\begin{figure}
+   \includegraphics[width=\textwidth / 2]{evaluation/images/theoretical_quantile_comparison.png}
+   \includegraphics[width=\textwidth / 2]{evaluation/images/practical_quantile_comparison.png}
+   \caption{Comparison of quantile functions for the data set $[100,200,300,400]$ }
+   \label{fig:qc}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \input{evaluation/tables/quantile_comparison.tex}
+  \caption{Quantile values for the dataset $[100, 200, 300, 400]$}
+\end{figure}
+
 
 \begin{figure}
   \includegraphics[width=\textwidth]{evaluation/images/Uniform_Distribution_accuracy.png}
