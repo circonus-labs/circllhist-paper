@@ -1032,58 +1032,42 @@ For the others errors of >100\% are not uncommon.
 
 \section{Conclusion}
 
-HDR Histograms, DDSketches and Circllhist are very similar approaches to the same problem of
-summarizing distributions in a way that allows arbitrary aggregations and a wide range of
-statistical operations like percentiles.
+In this article we have introduced the circllhist as a data-structure for summarizing data which
+allows accurate quantile calculations on aggregates.  To do so, we developed a general theory of
+log-linear histograms, and established a-priori error bounds for reconstructed samples ($4.76\%$)
+and computed quantiles ($10\%$).
 
-- All three methods are based on logarithmic histograms
+We compared this data-structure to alternative data-structures which are employed in practice for
+aggregated quantile calculations: Prometheus Histograms \cite{prom}, t-digest \cite{tdigest}, HDR
+Histograms \cite{hdr}, and DDSketches \cite{dd}.
 
-- All three methods cover essentially unbounded data ranges
+We have seen that, like the circllhist, also HDR Histograms and DDSketches arise as special cases of
+abstract log-linear histograms as described in this document. as a result the differences between
+these methods come down to configuration choices and implementation details.  In particular, all
+three methods operate on essentially unbounded data ranges, offer fast insertion and merge
+performance, approximate quantiles with comparable high accuracy ($<3\%$).
 
-- All three methods offer fast insertion times
+The Prometheus histogram, is a basic histogram data-structure that requires explicit configuration
+of bin boundaries. It's reliance on numeric time-series as backing data-structures makes using large
+numbers of bins impractical. With the recommended number of 10 bins, the quantile accuracy was not
+competitive with the other considered methods.
 
-- All three methods offer a-priori bound on the relative error
+The t-digest, is the only considered method that is not based on histograms. It brings competitive
+insertion and merge performance, as well as very fast quantile calculations. It also delivered
+precise quantile estimates for most of the considered cases. However, it does bring a-priori bounds
+on the relative error, like the log-linear histogram methods. This could be seen in one of the
+synthetic data-sets where large deviations of quantile values could be experienced after multiple
+merges had taken place.
 
-As such, it should not surprise that performance and accuracy of those methods is comparable.
-Differences come mainly down to configuration choices and optimizations of the implementation.
-
-In comparison to the other methods:
-
-- circllhist is the oldest method, dating back to 2011 when it was first introduced in Circonus.
-
-- circllhist mandates all bin boundaries, guaranteeing compatibility between histograms from different sources.
-
-- circllhist allows exact less-than counts at decimal floating point numbers, which are typically chosen by humans.
-
-- circllhist has the most optimized implementation available (C).
-
-DD Sketches:
-
-- Are actually histograms, despite their somewhat misleading name.
-
-- simpler than circllhists, since they only have a logarithmic not a linear part.
-
-- slightly better theoretical accuracy.
-
-- Not suited for embedded applications since floating point arithmetic is essential.
-
-T-digest
-
-- not a histogram, more complicated to reason about
-
-- very good results on well behaved datasets
-
-- no a-priori error bounds on relative error after merge operations
-
-- we have seen cases where the relative error grows to > 100x on simpluated datasets
-
-Prometheus histograms
-
-- require manual setting of thresholds and
-
-- only offer good percentile accuracy if the percentiles happen to lie near those thresholds.
-
-- non-sparse data structure makes using lot's of bins impractical
+In comparison to the other methods, the circllhist is the oldest available method, dating back to
+2011 when it was first introduced in the Circonus product. It's a one-size fit's all method that
+does not require any configuration and delivers unbounded data range, full mergability, and good
+accuracy (typically $<1\%$, worst-case $<10\%$) for various summary statistics including quantile
+calculations. It comes with a mature and polished implementation that delivers best-in class
+performance for insertion and merge operations. The circllhist has been used in the last decade at
+countless internal and third-party sites, for a highly diverse set of applications including high
+volume load balancing\footnote{as part of Envoy Proxy \url{https://www.envoyproxy.io/}}, in-kernel
+latency measurements\cite{HHBPF} and general application performance monitoring.
 
 \bibliographystyle{unsrt}
 \begin{thebibliography}{1}
@@ -1148,5 +1132,10 @@ Prometheus histograms
   \newblock An open-source systems monitoring and alerting toolkit.
   \newblock \url{https://prometheus.io/}
 
+\bibitem{HHBPF}
+  H. Hartmann.
+  \newblock Linux System Monitoring with eBPF,
+  \newblock Blog, 2018. \url{https://www.circonus.com/2018/05/linux-system-monitoring-with-ebpf/}
+  
 \end{thebibliography}
 \end{document}
