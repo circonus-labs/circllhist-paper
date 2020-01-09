@@ -838,44 +838,46 @@ It does not allow any configuration of bin sizes or accuracy.
    \label{fig:ds}
 \end{figure}
 
-For the evaluation we choose three different datasets, each containing over 1 million samples, split
-into more than 1000 batches.
+For the evaluation we choose three different datasets: ``Uniform Distribution'', ``API Latencies'' and ``Simulated API Latencies''
+each containing over 1 million samples, split into more than 1000 batches.
 
-\begin{itemize}
-\item Uniform Distribution. Random samples are generated for a uniform distribution on $[10,100]$.
-  These are split in to 1000 batches each containing 100 values, for a total of 1.000.000 samples.
-\item API Latencies.  This dataset contains data collected at one of our internal APIs
-  collected in 10 minute batches over the course of 6 weeks.
-  The data is spread between 0.29 and 11.000 (ms).
-  There is a cutoff value around 11sec, that was caused by timeout logic getting triggered.
-  This results in the higher quantile values being close together.
-  It consists of a total of 4.65 million samples in 6048 batches.
-\item Simulated Latencies.
-  We generate a total of 1000 batches of randomized sizes with randomized data.
-  The size of the batches follows a geometric distribution.
-  The samples themselves are generated as a randomly displaced and scaled paretro distribution.
-  The data is spread between on between $10^{-5}$ and $10^{10}$ with an extremely long tail.
-  The dataset contains a total of close to 1.000.000 samples.
-\end{itemize}
+
+For the ``Uniform Distribution'' dataset, random samples are generated for a uniform distribution on $[10,100]$.
+These are split in to 1000 batches each containing 100 values, for a total of 1.000.000 samples.
+
+The ``API Latencies'' dataset contains data collected at one of our internal APIs collected in 10
+minute batches over the course of 6 weeks.  The data is spread between 0.29 and 11.000 (ms).  There
+is a cutoff value around 11sec, that was caused by timeout logic getting triggered.  This results in
+the higher quantile values being close together.  It consists of a total of 4.65 million samples in
+6048 batches.
+
+For the ``Simulated Latencies'' dataset, we generate a total of 1000 batches of randomized sizes
+with randomized data.  The size of the batches follows a geometric distribution.  The samples
+themselves are generated as a randomly displaced and scaled paretro distribution.  The data is
+spread between on between $10^{-5}$ and $10^{10}$ with an extremely long tail.  The dataset contains
+a total of close to 1.000.000 samples.
 
 Figure \ref{fig:ds} contains a histogram visualization of the total distribution of these datasets.
 
 \subsection{Size}
 
-\begin{figure*}
-  \includegraphics[width=\textwidth]{evaluation/images/all_size.png}
-  \caption{Size Comparison}
-  \label{fig:size}
-\end{figure*}
-
 \begin{figure}
-  \centering
-  \input{evaluation/tables/all_size.tex}
-  \caption{Aggregation sizes in bytes}
-  \label{fig:tsize}
+    \centering
+    \begin{subfigure}[b]{0.3\textwidth}
+      \includegraphics[width=\textwidth]{evaluation/images/all_size_line.png}
+      \caption{Size Comparison}
+      \label{fig:size}
+    \end{subfigure}
+    ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc. 
+    \begin{subfigure}[b]{0.6\textwidth}
+      \input{evaluation/tables/all_size.tex}
+      \caption{Aggregation sizes in bytes}
+      \label{fig:tsize}
+    \end{subfigure}
+    \caption{Size Comparison}
 \end{figure}
 
-Figures \ref{fig:size} and \ref{fig:tsize} show the sizes of the data structures after all samples
+Figure \ref{fig:size} and Table \ref{fig:tsize} show the sizes of the data structures after all samples
 from the respective datasets have been inserted and the data structures have been merged.
 
 With our choice of parameters, the size of the HDR Histogram, DDSketch, circllhist follow each other
@@ -893,28 +895,54 @@ The Prometheus histogram was configured with 12 bins, and hence consumes exactly
 The size of the t-digest is relatively constant across all three data-sets, which reflects the fact
 that the number of clusters is kept constant when additional data is inserted.
 
-\clearpage
 \subsection{Performance}
 
-\begin{figure}
-  \includegraphics[width=\textwidth]{evaluation/images/Uniform_Distribution_perf.png}
-  \includegraphics[width=\textwidth]{evaluation/images/API_Latencies_perf.png}
-  \includegraphics[width=\textwidth]{evaluation/images/Simulated_Latencies_perf.png}
+\begin{figure}[t]
+  \includegraphics[width=\textwidth/3]{evaluation/images/all_perf_insert.png}
+  \includegraphics[width=\textwidth/3]{evaluation/images/all_perf_merge.png}
+  \includegraphics[width=\textwidth/3]{evaluation/images/all_perf_quantile.png}
   \caption{Performance Comparison}
+  \label{fig:perf}
 \end{figure}
 
-Tables in usec
+\begin{figure}
+  \centering
+  Uniform Distribution\\
+  \input{evaluation/tables/Uniform_Distribution_perf.tex}
+  \vskip 1em
+  API Latencies\\
+  \input{evaluation/tables/API_Latencies_perf.tex}
+  \vskip 1em
+  Simulated Latencies\\
+  \input{evaluation/tables/Simulated_Latencies_perf.tex}
+  \caption{Tabulated performance data in usec}
+  \label{tab:perf}
+\end{figure}
 
-Uniform\\
-\input{evaluation/tables/Uniform_Distribution_perf.tex}
+Figure \ref{fig:perf} and Table \ref{tab:perf} show the measured performance for insertion, merge
+and analysis phase for the three considered datasets. The insertion time is reported as per inserted
+sample.  The merge time is the time per merged batch. The analysis time is reported per calculated
+quantile.
 
-API Latencies\\
-\input{evaluation/tables/API_Latencies_perf.tex}
+As always, performance measurements should be taken with a grain of salt, since they are heavily
+influenced by the implementation, configuration and hardware choices. In our case, we choose to
+perform all performance measurements in python, with the most popular python implementations
+available.  In the case of the t-digest we ran into accuracy (and performance) problems with the the
+python version so we used the official Java version via pyjnius.
 
-Simulated API Latency Data\\
-\input{evaluation/tables/Simulated_Latencies_perf.tex}
+The measurements itself were performed with the
+timeit\footnote{https://docs.python.org/3/library/timeit.html} package, with 5 consecutive batches
+of runs each taking longer than 0.2 seconds.  As recommended, we report the minimal duration that
+was attained in any of the runs.
 
-\clearpage
+We ran these experiments on a server with Intel(R) Xeon(R) D-1540 CPU and 128GB RAM running
+Linux 5.3.13 and python 3.7.3.
+
+With this configuration, the circllhist was consistently the fastest method when it comes to
+insertion and merge.  For the quantile calculations the t-digest is very efficient, followed by
+circllhist and DDSketch. Quantile calculations for the HDR Histogram take a lot longer, which
+probably indicates optimization potential.
+
 \subsection{Accuracy}
 
 As we have seen in section \ref{sec:quantiles}, there are a number of different quantile definitions
