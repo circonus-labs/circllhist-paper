@@ -24,6 +24,8 @@
 \usepackage{graphicx}
 \usepackage{subcaption}
 
+\usepackage{csquotes}
+
 % ENVIRONMENTS
 \usepackage{amsthm}
 \theoremstyle{plain}
@@ -590,7 +592,7 @@ there are multiple different quantile definitions found in the wild.
 A comprehensive list was compiled by Hyndman-Fan in 1996 \cite{HF1996}.
 For our discussion the following two variants are relevant:
 
-\begin{definition}
+\begin{definition} \label{def:quantiles}
   Given a dataset $X=(x_1,\dots,x_n), n>0$ of real numbers, and a number $q \in [0,1]$.
   Let $x_{(1)} \leq x_{(2)} \leq \dots \leq x_{(n)}$ be the ordered version of $X$.
   We define the minimal type-1 q-quantile as
@@ -761,11 +763,11 @@ In this section we present a numerical comparison between the quantile aggregati
 in Section \ref{sec:rw}. We will evaluate the precision and performance of quantile calculations,
 performance of insertion and merge operations, as well as the size of the resulting data-structures.
 
-The evaluation proceeds in three phases: insertion, merge and analysis. In the insertion phase, raw
-data is inserted the data-structures. Each data-set is split into a number of batches. We create
-individual data-structures for each batch. In the merge phase, data-structures created for each
-batch are merged into a single one.  In the analysis phase, we perform quantile calculations on the
-merged data-structure.
+The evaluation proceeds in three phases: insertion, merge and quantile calculation. In the insertion
+phase, raw data is inserted the data-structures. Each data-set is split into a number of batches. We
+create individual data-structures for each batch. In the merge phase, data-structures created for
+each batch are merged into a single one.  In the quantile phase, we perform quantile calculations on
+the merged data-structure.
 
 The evaluation was performed using a set of Jupyter notebooks, which are available at
 \begin{center}
@@ -776,8 +778,6 @@ are using this document.  We also provide docker images and instructions, should
 reproduction of the evaluation results on other machines.  We are open to extension and improvements
 to the evaluation setup. Please contact us via email or open a pull request, if you identified flaws
 or found improvements.
-
-
 
 \subsection{Methods}
 
@@ -915,20 +915,24 @@ that the number of clusters is kept constant when additional data is inserted.
   \vskip 1em
   Simulated Latencies\\
   \input{evaluation/tables/Simulated_Latencies_perf.tex}
-  \caption{Tabulated performance data in usec}
+
+  \caption{Tabulated performance data in usec\protect\footnotemark}
   \label{tab:perf}
 \end{figure}
 
-Figure \ref{fig:perf} and Table \ref{tab:perf} show the measured performance for insertion, merge
-and analysis phase for the three considered datasets. The insertion time is reported as per inserted
-sample.  The merge time is the time per merged batch. The analysis time is reported per calculated
-quantile.
+\footnotetext{
+  The insertion time is reported as per inserted sample.
+  The merge time is the time per merged batch.
+  The quantile time is reported per calculated quantile.
+}
 
-As always, performance measurements should be taken with a grain of salt, since they are heavily
-influenced by the implementation, configuration and hardware choices. In our case, we choose to
-perform all performance measurements in python, with the most popular python implementations
-available.  In the case of the t-digest we ran into accuracy (and performance) problems with the the
-python version so we used the official Java version via pyjnius.
+Figure \ref{fig:perf} and Table \ref{tab:perf} show the measured performance for insertion, merge
+and analysis phase for the three considered datasets. As always, performance measurements should be
+taken with a grain of salt, since they are heavily influenced by the implementation, configuration
+and hardware choices. In our case, we choose to perform all performance measurements in python, with
+the most popular python implementations available.  In the case of the t-digest we ran into accuracy
+(and performance) problems with the the python version so we used the official Java version via
+pyjnius.
 
 The measurements itself were performed with the
 timeit\footnote{https://docs.python.org/3/library/timeit.html} package, with 5 consecutive batches
@@ -945,14 +949,10 @@ probably indicates optimization potential.
 
 \subsection{Accuracy}
 
-As we have seen in section \ref{sec:quantiles}, there are a number of different quantile definitions
-circulating in the wild. Before we can compare the accuracy, we have to make sure we are comparing
-the same numbers.
-
 \begin{figure}
    \includegraphics[width=\textwidth / 2]{evaluation/images/theoretical_quantile_comparison.png}
    \includegraphics[width=\textwidth / 2]{evaluation/images/practical_quantile_comparison.png}
-   \caption{Comparison of quantile functions for the data set $[100,200,300,400]$ }
+   \caption{Comparison of quantile functions for the data set $[100,200,300,400]$}
    \label{fig:qc}
 \end{figure}
 
@@ -960,14 +960,34 @@ the same numbers.
   \centering
   \input{evaluation/tables/quantile_comparison.tex}
   \caption{Quantile values for the dataset $[100, 200, 300, 400]$}
+  \label{tab:qc}
 \end{figure}
 
+As we have seen in section \ref{sec:quantiles}, there are a number of different quantile definitions
+circulating in the wild. Before we can compare the accuracy, we have to make sure we are comparing
+the same numbers.
+
+Figure \ref{fig:qc} and Table \ref{tab:qc} show the computed quantile values for the dataset $[100,
+  200, 300, 400]$. It's apparent that the different methods, make use of different quantile
+definitions: Prometheus uses type-1 quantiles in the sense of Hyndman-Fan \cite{HF1996}, Definition
+\ref{def:quantiles}.  DDSketch uses minimal type-7 quantiles.  t-digest appears to be uses a variant
+of interpolated type-7 quantiles, with extra weight on the min/max.  Similarly, HDR Histogram appear
+to be using a variant of minimal type-7 quantiles, with extra weight on min/max.  Circllhist
+computes type-1 quantiles by default. We have added a type-7 quantile function for the purpose of
+this evaluation.
+
+In the evaluation, we compare each of the methods against minimal type-7 quantiles computed on the
+raw data. The following twelve quantiles are computed:
+\begin{align*}
+ 0, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99, 0.995, 0.999, 0.9999, 0.99999, 1.
+\end{align*}
 
 \begin{figure}
   \includegraphics[width=\textwidth]{evaluation/images/Uniform_Distribution_accuracy.png}
   \includegraphics[width=\textwidth]{evaluation/images/API_Latencies_accuracy.png}
   \includegraphics[width=\textwidth]{evaluation/images/Simulated_Latencies_accuracy.png}
   \caption{Accuracy Comparison}
+  \label{fig:acc}
 \end{figure}
 
 \begin{figure}
@@ -977,7 +997,38 @@ the same numbers.
   \input{evaluation/tables/API_Latencies_accuracy.tex}
   Simulated API Latency Data\\
   \input{evaluation/tables/Simulated_Latencies_accuracy.tex}
+  \label{tab:acc}
 \end{figure}
+
+The evaluation results are reported in Figure \ref{fig:acc} and Table \ref{tab:acc}.  The first
+thing to note, is that the three histogram-based methods (HDR, DDSketch and circllhist) all compute
+quantiles with a relative error of below 3\%.
+
+In the body of the distribution accuracy of the circllhist is generally a little better than that of
+the DDSketch and the HDR Histogram.  This is due to fact that circllhist uses fair resampling for
+quantile calculations, whereas DDSketch uses paretro midpoint resampling.  It's also visible, that
+DDSketch tracks min and max values separately, and reports those values exactly.
+
+The accuracy of the t-digest is very high for the ``Uniform Distribution'' dataset and on the tails
+of the ``API Latency Dataset''. However, the high quantiles of the ``Simulated Latencies'' dataset
+have relative errors of more than 100\%. This example illustrates, that the t-digest does not give
+any accuracy guarantees for quantile approximation after multiple merging steps have been performed.
+There are a-priori error bounds for the initial data ingestion, but those are not guaranteed to hold
+after merging steps. This dataset involves a challenging merge of 1000 batches with highly variable
+distribution and size. As the authors of \cite{tdigest} write:
+
+\begin{displayquote}
+  We can force a digest formed by merging other digests to be fully merged by combining centroids
+  wherever consecutive clusters taken together meet the size bound. The resulting t-digest will not
+  necessarily be the same as if we had computed a t-digest from all of the original data at once
+  even though it will meet the same size constraint. $[\dots]$ This loss of strictly ordering makes
+  it difficult to compute rigorous error bounds.
+\end{displayquote}
+
+Our example suggests, that general rigorous error bounds are unlikely to exist.
+
+Prometheus quantiles are only accurate for the ``Unifrom Distribution'' dataset.
+For the others errors of >100\% are not uncommon.
 
 \section{Conclusion}
 
