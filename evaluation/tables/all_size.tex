@@ -1,0 +1,12 @@
+\begin{tabular}{lrrr}
+\toprule
+{} &  Uniform Distribution &  API Latencies &  Simulated Latencies \\
+\midrule
+exact      &                800000 &       37278488 &              8172184 \\
+prom       &                    88 &             88 &                   88 \\
+tdigest    &                  2240 &           2368 &                 2160 \\
+hdr        &                   615 &           2994 &                 3732 \\
+dd         &                   720 &           1902 &                 3373 \\
+circllhist &                   453 &           1866 &                 3438 \\
+\bottomrule
+\end{tabular}
