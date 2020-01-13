@@ -764,15 +764,19 @@ allocated bins never exceeded 1000, and the total size stayed below 10kb.
 Typical histograms in our system, have anywhere from 0-200 allocated bins and occupy <2kb before
 compression.
 
+A notable design goal of the circllhist is it's use for measurements inside the kernel or
+low-powered embedded devices.  In those environments floating point arithmetic is not available, and
+insertion performance is particularly critical. For these purposes the circllhist provides a highly
+optimized insertion function that avoids floating point arithmetic entirely (cf. Proposition
+\ref{prop:rec}).
+
 The C implementation of libcircllhist includes a number of performance optimizations.  It comes with
-an optional index structure, that avoids iteration over bins when retrieving and inserting data,
-Integer values with a given decimal exponent can be directly inserted (e.g. ns values) without using
-floating point arithmetic (cf. Proposition \ref{prop:rec}).  It uses static branch annotations to
-aid CPU branch predictions.  With these optimizations we can get raw insertion latencies down to
-$\sim 10ns$ for integer, and $\sim 80ns$ for double values.\footnote{ These latencies were measured
-in a tight C loop with the provided \texttt{test/histogram\_perf.c} script, on a 2Ghz Intel Xeon
-CPU.  The evaluation in section~\ref{sec:eval} is Python based and uses different iteration counts
-and data. }
+an optional index structure, that avoids iteration over bins when retrieving and inserting data, it
+uses static branch annotations to aid CPU branch predictions.  With these optimizations we can get
+raw insertion latencies down to $\sim 10ns$ for integer, and $\sim 80ns$ for double
+values.\footnote{ These latencies were measured in a tight C loop with the provided
+\texttt{test/histogram\_perf.c} script, on a 2Ghz Intel Xeon CPU.  The evaluation in
+section~\ref{sec:eval} is Python based and uses different iteration counts and data. }
 
 Implementations of the circllhist are available for a variety of languages including:
 \begin{itemize}
