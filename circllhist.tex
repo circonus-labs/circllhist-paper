@@ -771,7 +771,7 @@ optimized insertion function that avoids floating point arithmetic entirely (cf.
 \ref{prop:rec}).
 
 The C implementation of libcircllhist includes a number of performance optimizations.  It comes with
-an optional index structure, that avoids iteration over bins when retrieving and inserting data, it
+an optional index structure, that avoids iteration over bins when retrieving and inserting data and
 uses static branch annotations to aid CPU branch predictions.  With these optimizations we can get
 raw insertion latencies down to $\sim 10ns$ for integer, and $\sim 80ns$ for double
 values.\footnote{ These latencies were measured in a tight C loop with the provided
