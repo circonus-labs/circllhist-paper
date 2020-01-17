@@ -115,8 +115,16 @@ latencies, and impractical for high volume sources like function-call or system-
 Direct calculation of quantiles does not allow further aggregation, so that accurate quantiles for
 the total population can not be calculated.
 
+\begin{figure}
+  \includegraphics[width=\textwidth]{assets/demo.png}
+  \caption{Circllhist representation of 20M block-level disk I/O latencies measured over the course
+    of one month.}
+  \label{fig:demo}
+\end{figure}
+
 Circonus has addressed this problem with the circllhist data-structure, that we describe in this document.
 It has been in and production use since 2011.
+Figure \ref{fig:demo} shows an example of a visualized circllhist in the Circonus product.
 We have talked about this at various conferences and blogs (e.g. \cite{TS0},\cite{TS1},\cite{TS2}, \cite{HH1}).
 An open source implementation is available at \cite{libcircllhist}.
 However, no academic paper was published until now.
@@ -600,7 +608,7 @@ as well as two other quantile functions, used by data-structures covered in our 
   \begin{align*}
     Q^1_0(X) = x_{(1)} \qtext{and}  Q^1_q(X) = x_{(\ceil{q \cdot n})} \qtext{for} q > 0.
   \end{align*}
-  We define the minimal type-7 quantile is given by:
+  We define the minimal type-7 quantile as
   \begin{align*}
     Q^{7}_q(X) = x_{(\floor{q \cdot (n - 1)} + 1)}.
   \end{align*}
@@ -1008,7 +1016,7 @@ reported in Figure \ref{fig:acc} and Table \ref{tab:acc}.
 \end{figure}
 
 The first thing to note, is that the three histogram-based methods (HDR, DDSketch and circllhist)
-all compute quantiles with a relative error of below 3\%.
+all compute quantiles with a relative error of below 2\%.
 
 In the body of the distribution accuracy of the circllhist is generally a little better than that of
 the DDSketch and the HDR Histogram.  This is due to fact that circllhist uses fair resampling for
@@ -1051,7 +1059,7 @@ We have seen that, like the circllhist, also HDR Histograms and DDSketches arise
 abstract log-linear histograms as described in this document. As a result the differences between
 these methods come down to configuration choices and implementation details.  In particular, all
 three methods operate on essentially unbounded data ranges, offer fast insertion and merge
-performance, approximate quantiles with comparable high accuracy ($<3\%$).
+performance, approximate quantiles with comparable high accuracy ($<2\%$).
 
 The Prometheus histogram, is a basic histogram data-structure that requires explicit configuration
 of bin boundaries. It's reliance on numeric time-series as backing data-structures makes using large
