@@ -6,7 +6,7 @@ ENV = LC_ALL=C
 all: fix $(TARGETS)
 
 %.pdf: %.tex
-	$(DOCKER) pdflatex -interaction=nonstopmode --shell-escape $<
+	$(DOCKER) pdflatex -interaction=nonstopmode $<
 
 %.tex: %.md
 	pandoc -o $@ $<
