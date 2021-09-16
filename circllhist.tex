@@ -388,15 +388,15 @@ In particular, the circllhist binning map can be computed without use of the log
   or embedded devices.
 \end{remark}
 
-\subsection{Paretro Midpoints}
+\subsection{Pareto Midpoints}
 
 \begin{proposition} \label{prop:pdist}
   Given an interval $[a,b]$ in $\IR_{>0}$ the unique point $m$ in $[a,b]$ so that the maximal
   relative distance $rd(m, y) = |m-y|/y$ to all other points in $[a,b]$ is minimized
-  by the paretro midpoint
+  by the Pareto midpoint
   $m = 2ab / (a + b)$.
 
-  The maximal relative distance to the paretro midpoint is assumed at the interval boundaries
+  The maximal relative distance to the Pareto midpoint is assumed at the interval boundaries
   $rd(m,a) = rd(m,b) = (b - a) / (a + b)$.
 \end{proposition}
 
@@ -421,15 +421,15 @@ The following proposition gives a probabilistic interpretation of the location o
 Recall, that the expected value of a uniformly distributed random variable $X \sim U[a,b]$ is the midpoint $\IE[X] = (a+b)/2$.
 
 \begin{proposition}
-  Given an interval $[a,b]$, and an a=2 paretro distributed random variable $X$, then
-  the paretro midpoint is the conditional expectation:
+  Given an interval $[a,b]$, and an a=2 Pareto-distributed random variable $X$, then
+  the Pareto midpoint is the conditional expectation:
   \begin{align*}
     \IE[ X \, | \, X \in [a,b] \,] = 2ab / (a + b).
   \end{align*}
 \end{proposition}
 
 \begin{proof}
-  The paretro distribution has density $p(x) =C \cdot 1/x^{a+1}$, for some positive constant $C$, so for $a=2$ we get
+  The Pareto distribution has density $p(x) =C \cdot 1/x^{a+1}$, for some positive constant $C$, so for $a=2$ we get
   \begin{align*}
     \IE[ X \, | \, X \in [a,b] \,] = \frac{\int_a^b x p(x) dx}{\int_a^b p(x) dx}
     = \frac{\int_a^b x^{-2}  dx}{\int_a^b x^{-3} dx} = 2 \frac{b^{-1} - a^{-1}}{b^{-2}- a^{-2}}
@@ -440,7 +440,7 @@ Recall, that the expected value of a uniformly distributed random variable $X \s
 \end{proof}
 
 \begin{proposition}\label{prop:21}
-  The maximal relative distance to a paretro midpoint in the circllhist binning is $1/21 \approx 4.76\%$.
+  The maximal relative distance to a Pareto midpoint in the circllhist binning is $1/21 \approx 4.76\%$.
 \end{proposition}
 
 \begin{proof}
@@ -517,7 +517,7 @@ There are three strategies for doing so, that we have found valuable in practice
 \item Derive a probability distribution from a histogram (with uniform distribution inside the
   bins), and apply the statistics to this distribution.
 \item Resample the dataset by placing all points inside a bin at equally spaced distances ({\it fair resampling}).
-\item Resample the dataset by placing all points inside a bin into the (paretro) midpoints ({\it midpoint resampling}).
+\item Resample the dataset by placing all points inside a bin into the (Pareto) midpoints ({\it midpoint resampling}).
 \end{enumerate}
 
 From a theoretical perspective the probabilistic strategy is the most natural, and gives generally
@@ -531,7 +531,7 @@ moment estimation. For percentile calculations fair resampling is used.
 
 \begin{proposition}
   Let $X=(x_1,\dots,x_n), n>0$ be a dataset with values in $\IR_{>0}$, let $H$ be the circllhist summary of $X$.
-  For each bin $Bin[i]$, let $c_i \in Bin[i]$ be the paretro midpoint. Let
+  For each bin $Bin[i]$, let $c_i \in Bin[i]$ be the Pareto midpoint. Let
   \begin{align*}
     count[H] = \sum_i H(i), \quad sum[H] = \sum_{i\in I} H(i) \cdot c_i, \qtext{and} mean[H] = sum[H] / count[H].
   \end{align*}
@@ -574,7 +574,7 @@ distribution are much larger than needed. For densely populated bins the uniform
 often a good approximation, and can be used to estimate percentiles with high precision in typical
 cases.
 
-Fair resampling offers a welcome middle route. Instead of placing all samples at the (paretro)
+Fair resampling offers a welcome middle route. Instead of placing all samples at the (Pareto)
 midpoint, or smoothing them out with a uniform distribution, we place the samples at equally
 spaced position within each bin. In this way, densely populated bins will be approximated by a near
 uniform distribution and bins with only a single sample will be replaced by a single sample at the
@@ -589,7 +589,7 @@ midpoint, reducing the worst-case error to half the bin size.
   and let $\hat{X} = (x_{i,k} \,|\, i \in I, k = 1\dots,H(i))$. This is a dataset with $count[H]$ points.
 
   Similarly, we define the midpoint resampling of $H$, with $H(i)$ samples at the midpoint of $Bin[i]$,
-  and the paretro midpoint resampling of $H$, with $H(i)$ samples at the paretro midpoint of $Bin[i]$.
+  and the Pareto midpoint resampling of $H$, with $H(i)$ samples at the Pareto midpoint of $Bin[i]$.
 \end{definition}
 
 We now want to define the quantiles of a histogram as quantiles of the fair resampling of $H$.
@@ -683,10 +683,10 @@ Figure \ref{fig:pqf} shows a plot of the quantile functions, produced by all rel
 
 \begin{proposition}
   Let $X$ a dataset with $n > 0$ positive values and $0 < q \leq 1$. Let $H$ be the circllhist summary of $X$.
-  We denote by $\hat{X}^f(H)$ the fair resampling, and by $\hat{X}^p(H)$ the paretro-midpoint resampling of $H$.
+  We denote by $\hat{X}^f(H)$ the fair resampling, and by $\hat{X}^p(H)$ the Pareto-midpoint resampling of $H$.
   \begin{enumerate}
   \item The relative error of the estimated type-1 quantile is less than $1/21 \approx 4.76\%$ for
-    the paretro-resampling:
+    the Pareto-resampling:
     \begin{align*}
       |Q^1_q(X) - Q^1_q(\hat{X}^p(H))| \leq \frac{1}{21} Q^1_q(X)
     \end{align*}
@@ -702,8 +702,8 @@ Figure \ref{fig:pqf} shows a plot of the quantile functions, produced by all rel
 
 \begin{proof}
   Let $r = \ceil{q n}$, so that $Q^1_q(X) = X_{(r)}$.
-  By construction of the paretro resampling, the $r$-th ordered value in the $Q^1_q(\hat{X}^p) = \hat{X}^p_{(r)}$,
-  is the paretro midpoint of the bin containing $X_{(r)}$.
+  By construction of the Pareto resampling, the $r$-th ordered value in the $Q^1_q(\hat{X}^p) = \hat{X}^p_{(r)}$,
+  is the Pareto midpoint of the bin containing $X_{(r)}$.
   This shows that $|Q^1_q(X) - Q^1_q(\hat{X}^p)| < 1/21 Q^1_q(X)$ by Proposition \ref{prop:21}.
 
   Similarly for the fair resampling, the $r$-th ordered value in the $Q^1_q(\hat{X}^f) = \hat{X}^f_{(r)}$,
@@ -748,7 +748,7 @@ We have found this value range to be sufficient for all practical purposes.
 
 Within that range the circllhist bins have a relative size of 1\%-10\% of the values contained in
 them. Hence, the original values can be reconstructed with a relative error of no more than 10\%.
-If the reconstructed values are placed at the paretro midpoint of the bin, the relative reconstruction
+If the reconstructed values are placed at the Pareto midpoint of the bin, the relative reconstruction
 error can be reduced to 4.76\% (see Proposition \ref{prop:21}).
 
 The accuracy of approximations of statistical quantities like sums, means and quantiles is commonly
@@ -891,7 +891,7 @@ the higher quantile values being close together.  It consists of a total of 4.65
 
 For the ``Simulated Latencies'' dataset, we generate a total of 1000 batches of randomized sizes
 with randomized data.  The size of the batches follows a geometric distribution.  The samples
-themselves are generated as a randomly displaced and scaled paretro distribution.  The data is
+themselves are generated as a randomly displaced and scaled Pareto distribution.  The data is
 spread between on between $10^{-5}$ and $10^{10}$ with an extremely long tail.  The dataset contains
 a total of close to 1.000.000 samples.
 
@@ -1019,7 +1019,7 @@ all compute quantiles with a relative error of below 2\%.
 
 In the body of the distribution accuracy of the circllhist is generally a little better than that of
 the DDSketch and the HDR Histogram.  This is due to fact that circllhist uses fair resampling for
-quantile calculations, whereas DDSketch uses paretro midpoint resampling.  It's also visible, that
+quantile calculations, whereas DDSketch uses Pareto midpoint resampling.  It's also visible, that
 DDSketch tracks min and max values separately, and reports those values exactly.
 
 The accuracy of the t-digest is very high for the ``Uniform Distribution'' dataset and on the tails
